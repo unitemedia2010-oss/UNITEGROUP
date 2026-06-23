@@ -1,0 +1,14 @@
+{
+  "name": "Unite HR Portal",
+  "short_name": "Unite HR",
+  "description": "Cổng thông tin nhân sự, lịch làm và thông báo nội bộ Unite Group",
+  "start_url": "./portal.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f0e8",
+  "theme_color": "#741f2b",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

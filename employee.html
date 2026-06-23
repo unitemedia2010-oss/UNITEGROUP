@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+<head>
+<script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded-mode");</script>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>Unite Work Schedule | Nhân sự</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+<link href="./css/app.css?v=30" rel="stylesheet"/>
+</head>
+<body>
+<header class="topbar">
+<div>
+<div class="brand-line">UNITE WORK SCHEDULE</div>
+<h1>Trang đăng ký lịch</h1>
+</div>
+<div class="topbar-actions">
+      <a class="btn ghost portal-nav-link" href="./portal.html" title="Mở cổng thông tin HR">Cổng thông tin</a>
+<button aria-label="Thông báo" class="btn ghost icon-btn" id="notificationBtn" type="button">
+<span class="button-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6v-5a7 7 0 0 0-5-6.71V3a2 2 0 0 0-4 0v1.29A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"></path></svg></span>
+<span>Thông báo</span>
+<b class="notif-badge hidden" id="notificationBadge">0</b>
+</button>
+<div class="account-menu-wrap">
+<button aria-expanded="false" class="btn ghost account-menu-btn" id="accountMenuBtn" type="button">
+<span class="button-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5Z"></path></svg></span>
+<span class="account-label">Tài khoản</span>
+<span class="chevron">▾</span>
+</button>
+<div class="account-menu hidden" id="accountMenu">
+<button id="editProfileBtn" type="button">Sửa tên</button>
+<button id="changePasswordBtn" type="button">Đổi mật khẩu</button>
+<button class="danger-link" id="logoutBtn" type="button">Đăng xuất</button>
+</div>
+</div>
+</div>
+</header>
+<div aria-live="polite" class="toast-host" id="toastHost"></div>
+<main class="container employee-app">
+<section class="employee-hero">
+<div>
+<p class="eyebrow">Tài khoản</p>
+<h2 id="welcomeName">Xin chào</h2>
+<p class="muted" id="profileLine">Đang tải thông tin...</p>
+</div>
+<div class="progress-card">
+<div class="progress-head">
+<span>Tiến độ tháng</span>
+<b id="progressText">0 / 0 ngày</b>
+</div>
+<div class="progress-track">
+<div class="progress-fill" id="progressFill"></div>
+</div>
+</div>
+</section>
+<section class="grid four">
+<div class="panel metric compact"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-8.4 13.4-4-4L8 11l2.6 2.6L16 8.2l1.4 1.4Z"></path></svg></div><div class="metric-copy"><span>Đã duyệt</span><b id="approvedDays">0</b></div></div>
+<div class="panel metric compact"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm1 10.414 3.293 3.293-1.414 1.414L11 13.242V7h2Z"></path></svg></div><div class="metric-copy"><span>Chờ duyệt</span><b id="pendingDays">0</b></div></div>
+<div class="panel metric compact"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a3 3 0 0 0-3 3v13a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Zm1 16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9h16Zm-3.293-5.293-4.5 4.5a1 1 0 0 1-1.414 0l-2.5-2.5 1.414-1.414 1.793 1.793 3.793-3.793Z"></path></svg></div><div class="metric-copy"><span>Đã xin nghỉ</span><b id="leaveDays">0</b></div></div>
+<div class="panel metric compact"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm0 16a6 6 0 1 1 6-6 6.007 6.007 0 0 1-6 6Zm0-4a2 2 0 1 1 2-2 2 2 0 0 1-2 2Z"></path></svg></div><div class="metric-copy"><span>Chỉ tiêu tháng</span><b id="targetDays">0</b></div></div>
+</section>
+<section class="panel">
+<div class="month-toolbar">
+<div>
+<p class="eyebrow">Lịch làm tháng</p>
+<h2 id="monthTitle">Tháng</h2>
+<p class="muted">Chọn lịch theo từng ngày; bản nháp được gom theo tuần và gửi cho HR vào Thứ Bảy.</p>
+</div>
+<div class="month-actions">
+<button class="btn secondary" id="prevMonthBtn" type="button">← Tháng trước</button>
+<button class="btn ghost" id="todayBtn" type="button">Tháng này</button>
+<button class="btn secondary" id="nextMonthBtn" type="button">Tháng sau →</button>
+</div>
+</div>
+<div class="calendar-legend">
+<span><i class="dot dot-pending"></i> Chờ duyệt</span>
+<span><i class="dot dot-approved"></i> Đã duyệt</span>
+<span><i class="dot dot-leave"></i> Xin nghỉ</span>
+<span><i class="dot dot-draft"></i> Bản nháp</span>
+<span><i class="dot dot-off"></i> OFF đã chốt</span>
+<span><i class="dot dot-busy"></i> Lịch học/bận</span>
+</div>
+<div class="calendar-shell">
+<div class="calendar-weekheads">
+<div>T2</div>
+<div>T3</div>
+<div>T4</div>
+<div>T5</div>
+<div>T6</div>
+<div>T7</div>
+<div>CN</div>
+</div>
+<div class="month-calendar" id="monthCalendar"></div>
+</div>
+<p aria-live="polite" class="message" id="calendarMessage"></p>
+</section>
+<section class="panel draft-review-panel" id="draftReviewPanel">
+<div class="section-head draft-review-head">
+<div>
+<p class="eyebrow">Bản nháp lịch tuần</p>
+<h2 id="draftWeekTitle">Tuần đăng ký</h2>
+<p class="muted">Chọn lịch từ Thứ Hai đến Thứ Bảy. Bạn có thể sửa hoặc xóa từng ngày; lịch chỉ được gửi lên HR khi bấm <b>Nộp lịch tuần</b>.</p>
+</div>
+<div aria-label="Chuyển tuần đăng ký" class="draft-week-nav">
+<button class="btn ghost" id="prevDraftWeekBtn" type="button">← Tuần trước</button>
+<button class="btn secondary" id="currentDraftWeekBtn" type="button">Tuần cần đăng ký</button>
+<button class="btn ghost" id="nextDraftWeekBtn" type="button">Tuần sau →</button>
+</div>
+</div>
+<div class="draft-review-actions weekly-submit-actions">
+<span class="draft-count-badge" id="draftReviewCount">0 ngày đã chọn</span>
+<button class="btn ghost" id="clearDraftBtn" type="button">Xóa bản nháp tuần</button>
+<button class="btn primary" id="submitWeekScheduleBtn" type="button">Nộp lịch tuần</button>
+</div>
+<div class="draft-review-list" id="draftReviewList">
+<div class="empty-row">Chưa chọn lịch cho tuần này.</div>
+</div>
+<p aria-live="polite" class="message" id="draftReviewMessage"></p>
+</section>
+<section class="panel">
+<div class="tabs">
+<button class="tab-btn active" data-tab="tabMine" type="button">Lịch của tôi</button>
+<button class="tab-btn" data-tab="tabGuide" type="button">Hướng dẫn</button>
+</div>
+<div class="tab-panel active" id="tabMine">
+<div class="section-head">
+<div>
+<p class="eyebrow">Theo dõi</p>
+<h2>Lịch đã nộp trong tháng</h2>
+<p class="muted">Lịch học/lịch bận được cập nhật trực tiếp trong popup của từng ngày.</p>
+</div>
+<button class="btn ghost" id="refreshMineBtn" type="button">Làm mới</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Ngày</th><th>Ca</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead>
+<tbody id="myScheduleTable"></tbody>
+</table>
+</div>
+</div>
+<div class="tab-panel" id="tabGuide">
+<div class="guide-grid">
+<div><h3>Đăng ký lịch tuần</h3><p>Bấm ngày từ Thứ Hai đến Thứ Bảy, chọn ca và lưu vào bản nháp. HR nhận lịch sau khi bạn bấm <b>Nộp lịch tuần</b>.</p></div>
+<div><h3>Lịch học / lịch bận</h3><p>Ngay trong popup chọn lịch, bật mục lịch bận, chọn ca bận và lý do. Lịch bận được lưu ngay và có nút xóa khi không còn áp dụng.</p></div>
+<div><h3>Xin nghỉ linh hoạt</h3><p>Sau khi lịch được duyệt, bạn có thể xin nghỉ cả ca, nửa đầu ca, nửa cuối ca hoặc chọn chính xác khoảng giờ.</p></div>
+<div><h3>Chủ Nhật</h3><p>Chủ Nhật là ngày nghỉ hàng tuần nên hệ thống khóa đăng ký lịch làm, OFF và lịch bận.</p></div>
+</div>
+</div>
+</section>
+</main>
+<div class="uws-modal hidden" id="registerModal">
+<div class="uws-modal-backdrop" data-close-modal=""></div>
+<div class="uws-modal-card schedule-choice-modal">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Chọn lịch tuần</p>
+<h2 id="registerModalTitle">Chọn lịch ngày</h2>
+<p class="muted" id="registerModalMeta">Lịch làm được lưu vào bản nháp tuần; lịch bận được cập nhật trực tiếp.</p>
+</div>
+<button class="modal-close" data-close-modal="" type="button">×</button>
+</div>
+<div aria-label="Chọn lịch làm" class="schedule-choice-grid" role="radiogroup">
+<label class="schedule-choice-card full-day">
+<input id="regFullDay" name="registerShift" type="radio" value="full_day"/>
+<span class="choice-icon">●</span>
+<span class="choice-copy"><b>Cả ngày</b><small>Làm việc cả ngày</small></span>
+<span class="choice-check">✓</span>
+</label>
+<label class="schedule-choice-card morning">
+<input id="regMorning" name="registerShift" type="radio" value="morning"/>
+<span class="choice-icon">◐</span>
+<span class="choice-copy"><b>Buổi sáng</b><small>Đăng ký ca sáng</small></span>
+<span class="choice-check">✓</span>
+</label>
+<label class="schedule-choice-card afternoon">
+<input id="regAfternoon" name="registerShift" type="radio" value="afternoon"/>
+<span class="choice-icon">◑</span>
+<span class="choice-copy"><b>Buổi chiều</b><small>Đăng ký ca chiều</small></span>
+<span class="choice-check">✓</span>
+</label>
+<label class="schedule-choice-card off">
+<input id="regOff" name="registerShift" type="radio" value="off"/>
+<span class="choice-icon">○</span>
+<span class="choice-copy"><b>OFF</b><small>Không làm ngày này</small></span>
+<span class="choice-check">✓</span>
+</label>
+</div><section aria-labelledby="registerBusyTitle" class="register-busy-card">
+<div class="busy-toggle-row">
+<div>
+<div class="register-busy-heading">
+<strong id="registerBusyTitle">Lịch học / lịch bận</strong>
+<span class="busy-state-badge" id="registerBusyState">Chưa cập nhật</span>
+</div>
+<small>Bật để báo ca không khả dụng. Mục này được lưu ngay, không cần chờ nộp lịch tuần.</small>
+</div>
+<label aria-label="Bật lịch học hoặc lịch bận" class="switch-control">
+<input id="registerBusyToggle" type="checkbox"/>
+<span></span>
+</label>
+</div>
+<div class="busy-inline-fields is-disabled" id="registerBusyFields">
+<label>Ca bận
+      <select id="registerBusyShift">
+<option value="morning">Buổi sáng</option>
+<option value="afternoon">Buổi chiều</option>
+<option value="full_day">Cả ngày</option>
+</select>
+</label>
+<label>Lý do
+      <select id="registerBusyReason">
+<option value="school">Lịch học</option>
+<option value="exam">Thi / kiểm tra</option>
+<option value="personal">Việc cá nhân</option>
+<option value="family">Việc gia đình</option>
+<option value="other">Khác</option>
+</select>
+</label>
+<label class="busy-note-field">Ghi chú lịch bận
+      <input id="registerBusyNote" placeholder="Ví dụ: Học cố định buổi sáng" type="text"/>
+</label>
+<div class="busy-inline-actions register-busy-actions">
+<button class="btn secondary" id="saveRegisterBusyBtn" type="button">Lưu lịch bận</button>
+<button class="btn danger-soft hidden" id="deleteRegisterBusyBtn" type="button">Xóa lịch bận</button>
+</div>
+<p aria-live="polite" class="message" id="registerBusyMessage"></p>
+</div>
+</section>
+<label class="full">
+        Ghi chú nếu có
+        <textarea id="registerNote" placeholder="Ví dụ: Có thể đổi ca khi cần..." rows="3"></textarea>
+</label>
+<div class="actions modal-actions schedule-choice-actions">
+<button class="btn primary" id="saveDraftDayBtn" type="button">Lưu vào bản nháp</button>
+<button class="btn danger-soft hidden" id="deleteDraftDayBtn" type="button">Xóa lựa chọn ngày này</button>
+<button class="btn ghost" data-close-modal="" type="button">Đóng</button>
+</div>
+<p aria-live="polite" class="message" id="registerMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="leaveModal">
+<div class="uws-modal-backdrop" data-close-modal=""></div>
+<div class="uws-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Xin nghỉ</p>
+<h2 id="leaveModalTitle">Xin nghỉ ngày</h2>
+<p class="muted">Chỉ gửi khi lịch đã được admin duyệt; có thể xin nghỉ toàn ca hoặc theo giờ.</p>
+</div>
+<button class="modal-close" data-close-modal="" type="button">×</button>
+</div>
+<div class="form-grid">
+<label>Lịch đã duyệt <select id="leaveScheduleSelect"></select></label>
+<label>
+          Lý do nghỉ
+          <select id="leaveType">
+<option value="sick">Ốm</option>
+<option value="personal">Việc cá nhân</option>
+<option value="school">Lịch học phát sinh</option>
+<option value="exam">Thi / kiểm tra</option>
+<option value="family">Việc gia đình</option>
+<option value="other">Khác</option>
+</select>
+</label>
+<label>
+  Phạm vi nghỉ
+  <select id="leavePeriod">
+<option value="full_shift">Toàn bộ ca</option>
+<option value="first_half">Nửa đầu ca</option>
+<option value="last_half">Nửa cuối ca</option>
+<option value="custom">Chọn giờ cụ thể</option>
+</select>
+</label></div>
+<div class="leave-time-fields hidden" id="leaveCustomTimeFields">
+<label>Từ giờ <input id="leaveStartTime" step="900" type="time"/></label>
+<label>Đến giờ <input id="leaveEndTime" step="900" type="time"/></label>
+</div>
+<p class="field-hint" id="leavePeriodHint"></p>
+
+<label class="full">
+        Ghi chú xin nghỉ
+        <textarea id="leaveNote" placeholder="Ghi rõ lý do để admin xét duyệt" rows="3"></textarea>
+</label>
+<div class="actions modal-actions">
+<button class="btn danger" id="submitLeaveBtn" type="button">Gửi yêu cầu xin nghỉ</button>
+<button class="btn ghost" data-close-modal="" type="button">Hủy</button>
+</div>
+<p aria-live="polite" class="message" id="leaveMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="notificationModal">
+<div class="uws-modal-backdrop" data-close-modal=""></div>
+<div class="uws-modal-card notify-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Lịch sử thông báo</p>
+<h2>Thông báo của bạn</h2>
+<p class="muted">Các thông báo hành động sẽ được lưu tại đây cho đến khi bạn vào xem.</p>
+</div>
+<button class="modal-close" data-close-modal="" type="button">×</button>
+</div>
+<div class="notify-modal-toolbar">
+<button class="btn ghost" id="clearNotificationsBtn" type="button">Xóa tất cả</button>
+</div>
+<div class="notification-list" id="notificationList"></div>
+</div>
+</div>
+<div class="uws-modal hidden" id="profileModal">
+<div class="uws-modal-backdrop" data-close-modal=""></div>
+<div class="uws-modal-card profile-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Hồ sơ cá nhân</p>
+<h2>Cập nhật tên hiển thị</h2>
+<p class="muted">Nhập đúng họ tên để admin nhìn thấy tên thật trên lịch làm.</p>
+</div>
+<button class="modal-close" data-close-modal="" type="button">×</button>
+</div>
+<div class="form-stack profile-form">
+<label>
+          Họ tên hiển thị
+          <input autocomplete="name" id="profileFullNameInput" placeholder="Ví dụ: Nguyễn Văn A" type="text"/>
+</label>
+<label>
+          Số điện thoại nếu có
+          <input autocomplete="tel" id="profilePhoneInput" placeholder="Nhập số điện thoại nếu muốn cập nhật" type="text"/>
+</label>
+</div>
+<div class="actions modal-actions">
+<button class="btn primary" id="submitProfileBtn" type="button">Lưu hồ sơ</button>
+<button class="btn ghost" data-close-modal="" type="button">Hủy</button>
+</div>
+<p aria-live="polite" class="message" id="profileMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="changePasswordModal">
+<div class="uws-modal-backdrop" data-close-modal=""></div>
+<div class="uws-modal-card password-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Bảo mật tài khoản</p>
+<h2>Đổi mật khẩu</h2>
+<p class="muted">Nhập mật khẩu hiện tại để xác nhận, sau đó đặt mật khẩu mới.</p>
+</div>
+<button class="modal-close" data-close-modal="" type="button">×</button>
+</div>
+<div class="form-stack password-form">
+<label>
+          Mật khẩu hiện tại
+          <input autocomplete="current-password" id="currentPasswordInput" placeholder="Nhập mật khẩu đang dùng" type="password"/>
+</label>
+<label>
+          Mật khẩu mới
+          <input autocomplete="new-password" id="newPasswordInput" placeholder="Tối thiểu 8 ký tự" type="password"/>
+</label>
+<label>
+          Nhập lại mật khẩu mới
+          <input autocomplete="new-password" id="confirmNewPasswordInput" placeholder="Nhập lại mật khẩu mới" type="password"/>
+</label>
+</div>
+<div class="password-rules">
+<span>Mật khẩu mới nên có ít nhất 8 ký tự.</span>
+<span>Không dùng lại mật khẩu quá dễ đoán như 12345678.</span>
+</div>
+<div class="actions modal-actions">
+<button class="btn primary" id="submitChangePasswordBtn" type="button">Cập nhật mật khẩu</button>
+<button class="btn ghost" data-close-modal="" type="button">Hủy</button>
+</div>
+<p aria-live="polite" class="message" id="changePasswordMessage"></p>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./js/config.js?v=30"></script>
+<script src="./js/employee.js?v=30"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+project_id = "yoxpuohxstudwmtglito"
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.hr-import-employees]
+verify_jwt = false
+
+[functions.google-workspace-bridge]
+verify_jwt = false
+
+[functions.hr-create-employee]
+verify_jwt = false
