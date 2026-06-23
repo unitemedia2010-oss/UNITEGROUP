@@ -58,6 +58,7 @@ const calendarMessage = document.getElementById("calendarMessage");
 const registerModal = document.getElementById("registerModal");
 const registerModalTitle = document.getElementById("registerModalTitle");
 const registerModalMeta = document.getElementById("registerModalMeta");
+const registerEmployeeKind = document.getElementById("registerEmployeeKind");
 const registerNote = document.getElementById("registerNote");
 const registerMessage = document.getElementById("registerMessage");
 const registerBusyToggle = document.getElementById("registerBusyToggle");
@@ -405,6 +406,19 @@ function isDateInActiveDraftWeek(dateIso) {
 function getSelectedRegisterShift() {
   const selected = document.querySelector('input[name="registerShift"]:checked');
   return selected?.value || "";
+}
+
+function employeeKindLabel(profile = currentProfile) {
+  const code = String(profile?.employee_code || "").trim().toUpperCase();
+  const role = String(profile?.role_type || "").trim().toUpperCase();
+  if (/^TTS/.test(code) || role === "TTS") return "TTS";
+  if (/^NVPT/.test(code) || role === "NVPT") return "NVPT";
+  if (/^CTV/.test(code)) return "CTV";
+  if (/^(SALE|SAL|S)[A-Z0-9_-]*/.test(code) || role === "SALE") return "Sale";
+  if (/^(LD|LEADER)/.test(code) || role === "LEADER") return "Leader";
+  if (/^(QL|BM|AM|TPKD|QLCN)/.test(code) || ["BRANCH_MANAGER", "AREA_MANAGER"].includes(role)) return "Quản lý";
+  if (/^U\d+/.test(code)) return "Khối văn phòng/BLĐ";
+  return role || "Nhân sự";
 }
 
 function clearRegisterChoice() {
@@ -1206,6 +1220,7 @@ function openRegisterModal(dateIso) {
   const draft = getDraftForDate(dateIso);
   registerModalTitle.textContent = `${draft ? "Sửa" : "Chọn"} lịch ngày ${formatDate(dateIso)}`;
   registerModalMeta.textContent = `${formatActiveWeekRange()}. Lựa chọn chỉ nằm trong bản nháp tuần cho đến khi bạn bấm Nộp lịch tuần.`;
+  if (registerEmployeeKind) registerEmployeeKind.textContent = `Nhóm nhân sự: ${employeeKindLabel()}`;
 
   if (draft) {
     const input = document.querySelector(`input[name="registerShift"][value="${draft.shift}"]`);
@@ -1254,7 +1269,7 @@ function renderProfileHeader() {
 
   if (welcomeName) welcomeName.textContent = `Xin chào, ${displayName}`;
   if (profileLine) {
-    profileLine.textContent = `${currentProfile?.employee_code || "Chưa có mã"} • ${currentProfile?.role_type || ""} • ${currentProfile?.area || "Chưa có khu vực"} • ${currentProfile?.team || "Chưa có team"}`;
+    profileLine.textContent = `${currentProfile?.employee_code || "Chưa có mã"} • ${employeeKindLabel()} • ${currentProfile?.area || "Chưa có khu vực"} • ${currentProfile?.team || "Chưa có team"}`;
   }
   if (targetDaysEl) targetDaysEl.textContent = currentProfile?.min_days_per_month || 0;
 }

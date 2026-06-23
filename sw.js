@@ -1,9 +1,9 @@
-const CACHE_NAME = "unite-hr-portal-v30";
+const CACHE_NAME = "unite-hr-portal-v31";
 const APP_SHELL = [
   "./", "./index.html", "./portal.html", "./admin.html", "./employee.html", "./change-password.html",
-  "./css/app.css?v=30", "./js/config.js?v=30", "./js/auth.js?v=30",
-  "./js/portal.js?v=30", "./js/import-mapper.js?v=30",
-  "./js/admin.js?v=30", "./js/employee.js?v=30", "./js/first-password.js?v=30",
+  "./css/app.css?v=31", "./js/config.js?v=31", "./js/auth.js?v=31",
+  "./js/portal.js?v=31", "./js/import-mapper.js?v=31",
+  "./js/admin.js?v=31", "./js/employee.js?v=31", "./js/first-password.js?v=31",
   "./icons/icon-192.png", "./icons/icon-512.png"
 ];
 

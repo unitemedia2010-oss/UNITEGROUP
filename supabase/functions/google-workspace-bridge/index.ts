@@ -57,7 +57,7 @@ async function fetchAllEmployees(admin: ReturnType<typeof createClient>) {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await admin
       .from("employees")
-      .select("id,employee_code,full_name,work_email,personal_email,phone,department,area,branch,team,title,employment_level,employment_type,start_date,official_date,end_date,employment_status,data_quality,sync_version,updated_at,source_row,source_row_order,department_rank,hierarchy_rank,hierarchy_level,hierarchy_label,org_sort_key,original_employee_code")
+      .select("id,employee_code,full_name,nickname,work_email,personal_email,phone,department,area,branch,team,title,employment_level,employment_type,start_date,official_date,end_date,employment_status,data_quality,sync_version,updated_at,source_row,source_row_order,department_rank,hierarchy_rank,hierarchy_level,hierarchy_label,org_sort_key,original_employee_code")
       .order("department_rank", { ascending: true })
       .order("hierarchy_rank", { ascending: true })
       .order("area", { ascending: true, nullsFirst: false })
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
     if (!incoming.length || incoming.length > 100) return json({ message: "Mỗi lần đồng bộ cần từ 1 đến 100 dòng." }, 422);
 
     const allowedFields = [
-      "employee_code", "full_name", "work_email", "personal_email", "phone",
+      "employee_code", "full_name", "nickname", "work_email", "personal_email", "phone",
       "department", "area", "branch", "team", "title", "employment_level",
       "employment_type", "start_date", "official_date", "end_date",
       "employment_status", "data_quality"

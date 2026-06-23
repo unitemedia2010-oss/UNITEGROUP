@@ -1,14 +1,6 @@
-# Google Apps Script Bridge
+# Google Apps Script — Current Bridge
 
-Project đích:
-
-- Script ID: `18hcglwdKge81RhF3TMDCAAgqEPqlBVqcleb-o0AyAOGBc6ffG7LXI5ym`
-- Sheet ID: `1pZopMrsmC2jmTP6gFmW1U9bpOYIOVf4ojll0-Ul7yCI`
-
-Các file:
-
-- `Code.gs`: menu Sheet, đồng bộ nhân sự, upload file Drive, Web App endpoint.
-- `appsscript.json`: quyền Sheets, Drive và UrlFetch.
-- `.clasp.json`: dùng để push vào đúng Apps Script project bằng clasp.
-
-Bắt đầu bằng cách chạy function `setupUniteHrWorkspace` trong Apps Script Editor.
+1. Dán `Code.gs` vào project Apps Script hiện tại.
+2. Bật và thay `appsscript.json` bằng file đi kèm.
+3. Deploy phiên bản Web App mới, giữ nguyên URL `/exec`.
+4. Không đưa `INTEGRATION_SECRET` vào source hoặc GitHub.

@@ -3652,3 +3652,324 @@ html.embedded-mode .portal-return-btn,html.embedded-mode .portal-nav-link { disp
   .employee-detail-actions .btn { flex:1 1 150px; }
   .portal-topbar-actions #portalRefreshBtn { display:none; }
 }
+
+/* =========================================
+   V31 - BULK ACCOUNT MANAGEMENT
+========================================= */
+.bulk-account-modal-card {
+  width: min(1180px, calc(100vw - 28px));
+  max-height: 94vh;
+  overflow: auto;
+}
+
+.bulk-account-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 18px;
+}
+
+.bulk-account-summary article {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 86px;
+  padding: 15px 17px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 17px;
+  background: #f8fafc;
+}
+
+.bulk-account-summary span {
+  color: var(--text-muted, #6b7280);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.bulk-account-summary b {
+  color: var(--primary-color, #741f2b);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.bulk-account-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 18px;
+  background: #fbfcfe;
+}
+
+.bulk-account-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 15px 0;
+}
+
+.bulk-account-table-wrap {
+  max-height: 48vh;
+  overflow: auto;
+}
+
+.bulk-account-table-wrap table { min-width: 980px; }
+.bulk-account-table-wrap th:first-child,
+.bulk-account-table-wrap td:first-child { width: 44px; text-align: center; }
+.bulk-account-table-wrap td { vertical-align: top; }
+.bulk-account-table-wrap .bulk-person-name {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted, #6b7280);
+  font-size: 12px;
+}
+
+.bulk-scope {
+  display: inline-block;
+  max-width: 250px;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.bulk-role-select {
+  min-width: 170px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 11px;
+}
+
+.bulk-status-message {
+  display: block;
+  max-width: 260px;
+  margin-top: 6px;
+  color: var(--text-muted, #6b7280);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.bulk-row-disabled { background: #fafafa; opacity: .76; }
+.bulk-account-footer { margin-top: 13px; }
+.bulk-progress {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eceff3;
+}
+.bulk-progress > div {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #741f2b, #b76775);
+  transition: width .22s ease;
+}
+
+/* Unite Group image identity */
+.portal-brand .brand-badge { display: none !important; }
+.portal-brand .portal-brand-logo {
+  flex: 0 0 auto;
+  display: block !important;
+  width: 86px;
+  height: 36px;
+  object-fit: contain;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+}
+.portal-brand strong { white-space: nowrap; }
+
+.portal-metrics .metric.portal-metric-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  min-height: 122px;
+  padding: 18px 20px;
+}
+.portal-metrics .metric.portal-metric-card::before {
+  display: none;
+}
+.portal-metrics .portal-metric-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  border: 1px solid #ead8dd;
+  border-radius: 12px;
+  color: #741f2b;
+  background: #fff7f9;
+}
+.portal-metrics .portal-metric-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.portal-metrics .portal-metric-label {
+  margin: 0;
+  min-width: 0;
+  color: #626a75;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .055em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.portal-metrics .metric b {
+  justify-self: end;
+  min-width: 52px;
+  text-align: right;
+  letter-spacing: 0;
+}
+
+.employee-table-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.employee-table-summary > div {
+  display: grid;
+  gap: 3px;
+}
+.employee-table-summary .btn { min-height: 38px; }
+.employee-column-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, .55fr) minmax(0, 1.45fr);
+  align-items: center;
+  gap: 14px;
+  margin: 10px 0 12px;
+  padding: 14px 16px;
+}
+.employee-column-toolbar > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.employee-column-toolbar b {
+  color: #741f2b;
+  font-size: 13px;
+}
+.employee-column-toolbar span {
+  color: #777b82;
+  font-size: 11px;
+}
+.employee-column-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.employee-column-chip {
+  min-height: 32px;
+  padding: 7px 11px;
+  border: 1px solid #dde2e8;
+  border-radius: 999px;
+  color: #4a4f58;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.employee-column-chip.active {
+  color: #fff;
+  border-color: #741f2b;
+  background: #741f2b;
+}
+.employee-column-chip:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.employee-data-grid {
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.employee-data-grid table {
+  width: 100%;
+  min-width: 1420px;
+  table-layout: auto;
+}
+.employee-data-grid th,
+.employee-data-grid td {
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  vertical-align: middle;
+}
+.employee-data-grid th {
+  color: #4f5560;
+  font-size: 10px;
+  letter-spacing: .055em;
+  white-space: nowrap;
+}
+.employee-data-grid .cell-text {
+  display: inline;
+  white-space: normal;
+}
+.employee-data-grid [data-employee-col="employee_code"],
+.employee-data-grid .employee-action-col {
+  white-space: nowrap;
+}
+.employee-data-grid .employee-group-row td {
+  padding: 10px 14px;
+  font-size: 11px;
+  letter-spacing: .055em;
+}
+.employee-data-grid .badge {
+  padding: 5px 9px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.register-employee-kind {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 26px;
+  margin-top: 9px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #6b2330;
+  background: #fff1f4;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 980px) {
+  .bulk-account-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bulk-account-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .employee-column-toolbar { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .portal-section-head > .actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .portal-section-head > .actions .btn { width: 100%; }
+  .bulk-account-modal-card {
+    width: 100%;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+  .bulk-account-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bulk-account-toolbar { grid-template-columns: 1fr; }
+  .bulk-account-actions { align-items: stretch; }
+  .bulk-account-actions > .actions { width: 100%; display: grid; grid-template-columns: 1fr; }
+  .bulk-account-actions .btn,
+  .bulk-account-actions .overview-chip { width: 100%; }
+  .bulk-account-table-wrap { max-height: 52vh; }
+}

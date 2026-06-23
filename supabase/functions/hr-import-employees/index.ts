@@ -35,8 +35,64 @@ function clean(value: unknown): string | null {
   return result || null;
 }
 
+function fold(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function titleCase(value: unknown): string | null {
+  const raw = clean(value)?.replace(/\s+/g, " ");
+  if (!raw) return null;
+  return raw.toLocaleLowerCase("vi").replace(/(^|[\s-/])([^\s-/])/g, (_match, prefix, char) => `${prefix}${char.toLocaleUpperCase("vi")}`);
+}
+
+function canonicalText(value: unknown, field = ""): string | null {
+  const raw = clean(value)?.replace(/\s+/g, " ");
+  if (!raw) return null;
+  const key = fold(raw);
+  const special: Record<string, string> = {
+    hr: "HR",
+    admin: "Admin",
+    bld: "BLĐ",
+    "ban lanh dao": "BLĐ",
+    "kinh doanh": "Kinh Doanh",
+    "tinh hoa": "Tinh Hoa",
+    "ky tai": "Kỳ Tài",
+    "tien phong": "Tiên Phong",
+    "buc pha": "Bức Phá",
+    "but pha": "Bức Phá",
+    "khai pha": "Khai Phá",
+    "full time": "Full Time",
+    "part time": "Part Time",
+    ctv: "CTV",
+    tts: "TTS",
+    nvpt: "NVPT",
+    ontop: "ONTOP",
+    one: "O.N.E",
+    "o n e": "O.N.E"
+  };
+  if (special[key]) return special[key];
+  if (field === "employee_code") return raw.toUpperCase();
+  if (field === "bank" && /^[a-z0-9]{2,12}$/i.test(raw)) return raw.toUpperCase();
+  if (field === "branch" && /^[a-z0-9]{2,6}$/i.test(raw)) return raw.toUpperCase();
+  if (field === "team" && (/^[a-z0-9.]{2,6}$/i.test(raw) || raw === raw.toUpperCase())) return raw.toUpperCase();
+  if (field === "full_name" && raw === raw.toUpperCase()) return titleCase(raw);
+  return raw;
+}
+
 function statusValue(value: unknown) {
-  return ["active", "resigned", "reserved", "unknown"].includes(String(value)) ? String(value) : "unknown";
+  const normalized = fold(value);
+  if (["active", "resigned", "reserved", "unknown"].includes(normalized)) return normalized;
+  if (normalized.includes("dang lam")) return "active";
+  if (normalized.includes("da nghi") || normalized.includes("nghi viec")) return "resigned";
+  if (normalized.includes("bao luu")) return "reserved";
+  return "unknown";
 }
 
 Deno.serve(async (req: Request) => {
@@ -100,8 +156,8 @@ Deno.serve(async (req: Request) => {
   for (const record of records) {
     processed++;
     const rowNumber = Number(record.row_number || processed);
-    const fullName = clean(record.full_name);
-    const employeeCode = clean(record.employee_code)?.toUpperCase() || null;
+    const fullName = canonicalText(record.full_name, "full_name");
+    const employeeCode = canonicalText(record.employee_code, "employee_code");
     const workEmail = clean(record.work_email)?.toLowerCase() || null;
     const personalEmail = clean(record.personal_email)?.toLowerCase() || null;
     const warnings = Array.isArray(record.warnings) ? record.warnings.map(String) : [];
@@ -117,10 +173,10 @@ Deno.serve(async (req: Request) => {
     if (warnings.length) warningRows++;
 
     try {
-      const department = clean(record.department);
-      const area = clean(record.area);
-      const branch = clean(record.branch);
-      const team = clean(record.team);
+      const department = canonicalText(record.department, "department");
+      const area = canonicalText(record.area, "area");
+      const branch = canonicalText(record.branch, "branch");
+      const team = canonicalText(record.team, "team");
       const departmentId = department ? await findOrCreateUnit("department", department.toUpperCase(), department, companyId) : null;
       const areaId = area ? await findOrCreateUnit("area", area.toUpperCase(), area, companyId) : null;
       const branchParent = areaId || companyId;
@@ -153,11 +209,11 @@ Deno.serve(async (req: Request) => {
         personal_email: personalEmail,
         phone: clean(record.phone),
         department, area, branch, team,
-        title: clean(record.title),
-        employment_level: clean(record.employment_level),
-        employment_type: clean(record.employment_type),
-        gender: clean(record.gender),
-        nickname: clean(record.nickname),
+        title: canonicalText(record.title, "title"),
+        employment_level: canonicalText(record.employment_level, "level"),
+        employment_type: canonicalText(record.employment_type, "type"),
+        gender: canonicalText(record.gender, "gender"),
+        nickname: canonicalText(record.nickname, "nickname"),
         start_date: clean(record.start_date),
         official_date: clean(record.official_date),
         end_date: clean(record.end_date),
@@ -190,7 +246,7 @@ Deno.serve(async (req: Request) => {
         nationality: clean(privateData.nationality), citizen_id: clean(privateData.citizen_id), social_insurance_no: clean(privateData.social_insurance_no),
         tax_code: clean(privateData.tax_code), address_line: clean(privateData.address_line), district: clean(privateData.district), province: clean(privateData.province),
         starting_salary: privateData.starting_salary ?? null, current_salary: privateData.current_salary ?? null,
-        bank_account: clean(privateData.bank_account), bank_name: clean(privateData.bank_name), probation_start: clean(privateData.probation_start),
+        bank_account: clean(privateData.bank_account), bank_name: canonicalText(privateData.bank_name, "bank"), probation_start: clean(privateData.probation_start),
         probation_end: clean(privateData.probation_end), probation_status: clean(privateData.probation_status), related_documents: clean(privateData.related_documents),
         official_contract_type: clean(privateData.official_contract_type), contract_expiry: clean(privateData.contract_expiry), contract_file_url: clean(privateData.contract_file_url),
         handover_status: clean(privateData.handover_status), handover_date: clean(privateData.handover_date), updated_at: new Date().toISOString()

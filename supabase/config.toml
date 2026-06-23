@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.hr-create-employee]
 verify_jwt = false
+
+[functions.hr-bulk-create-users]
+verify_jwt = false

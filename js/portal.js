@@ -15,16 +15,21 @@
     importResult: null,
     employeePage: 1,
     employeePageSize: 30,
+    employeeVisibleColumns: null,
     employeeSmartFilter: {},
     activeEmployee: null,
     activeEmployeePrivate: null,
+    employeePrivateById: new Map(),
     orgEmployees: [],
     importDiff: [],
     importSelected: new Set(),
     scheduleFrameLoaded: false,
     activeCase: null,
     hrAssignees: [],
-    subscriptions: []
+    subscriptions: [],
+    bulkAccounts: [],
+    bulkSelected: new Set(),
+    bulkAccountBusy: false
   };
 
   const CASE_STATUS_LABELS = {
@@ -47,7 +52,15 @@
     return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
   }
-  function normalize(value) { return String(value ?? "").trim().toLowerCase(); }
+  function normalize(value) {
+    return String(value ?? "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, " ");
+  }
   function isHR() { return HR_ROLES.includes(state.profile?.role_type); }
   function isManager() { return ADMIN_ROLES.includes(state.profile?.role_type); }
   function isGlobalAdmin() { return ["ADMIN", "SUPER_ADMIN"].includes(state.profile?.role_type); }
@@ -66,6 +79,80 @@
     return new Date(Date.now() + hours * 3600000).toISOString();
   }
   function unique(values) { return [...new Set(values.filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b), "vi")); }
+  function uniqueCanonical(values, field = "") {
+    const byKey = new Map();
+    values.forEach(value => {
+      const canonical = canonicalDisplay(value, field);
+      const key = normalize(canonical);
+      if (!key || byKey.has(key)) return;
+      byKey.set(key, canonical);
+    });
+    return [...byKey.values()].sort((a, b) => String(a).localeCompare(String(b), "vi", { sensitivity: "base" }));
+  }
+  function sameText(a, b) { return normalize(a) === normalize(b); }
+  function titleCaseText(value) {
+    const raw = String(value ?? "").trim().replace(/\s+/g, " ");
+    if (!raw) return "";
+    return raw.toLocaleLowerCase("vi").replace(/(^|[\s-/])([^\s-/])/g, (_, prefix, char) => `${prefix}${char.toLocaleUpperCase("vi")}`);
+  }
+  function canonicalDisplay(value, field = "") {
+    const raw = String(value ?? "").trim().replace(/\s+/g, " ");
+    if (!raw) return "";
+    const key = normalize(raw);
+    const special = {
+      "hr": "HR",
+      "admin": "Admin",
+      "bld": "BLĐ",
+      "ban lanh dao": "BLĐ",
+      "kinh doanh": "Kinh Doanh",
+      "tinh hoa": "Tinh Hoa",
+      "ky tai": "Kỳ Tài",
+      "tien phong": "Tiên Phong",
+      "buc pha": "Bức Phá",
+      "but pha": "Bức Phá",
+      "khai pha": "Khai Phá",
+      "full time": "Full Time",
+      "part time": "Part Time",
+      "ctv": "CTV",
+      "tts": "TTS",
+      "nvpt": "NVPT",
+      "ontop": "ONTOP",
+      "one": "O.N.E",
+      "o n e": "O.N.E"
+    }[key];
+    if (special) return special;
+    if (field === "employee_code") return raw.toUpperCase();
+    if (field === "bank" && /^[a-z0-9]{2,12}$/i.test(raw)) return raw.toUpperCase();
+    if (field === "branch" && /^[a-z0-9]{2,6}$/i.test(raw)) return raw.toUpperCase();
+    if (field === "team" && (/^[a-z0-9.]{2,6}$/i.test(raw) || raw === raw.toUpperCase())) return raw.toUpperCase();
+    if (field === "full_name" && raw === raw.toUpperCase()) return titleCaseText(raw);
+    return raw;
+  }
+  function employeeDisplay(row, field) {
+    if (field === "level") return canonicalDisplay(row.employment_level, field);
+    if (field === "type") return canonicalDisplay(row.employment_type, field);
+    return canonicalDisplay(row?.[field], field);
+  }
+  function employeePrivate(rowOrId) {
+    const id = typeof rowOrId === "string" ? rowOrId : rowOrId?.id;
+    return id ? state.employeePrivateById.get(id) || {} : {};
+  }
+  function employeeCodeGroup(row) {
+    const code = String(row?.employee_code || "").trim().toUpperCase();
+    const role = String(row?.suggested_role || row?.role_type || "").trim().toUpperCase();
+    const type = normalize(row?.employment_type);
+    if (/^TTS/.test(code) || role === "TTS" || type === "tts") return "TTS";
+    if (/^NVPT/.test(code) || role === "NVPT") return "NVPT";
+    if (/^CTV/.test(code) || type === "ctv") return "CTV";
+    if (/^(SALE|SAL|S)[A-Z0-9_-]*/.test(code) || role === "SALE") return "Sale";
+    if (/^(LD|LEADER)/.test(code) || role === "LEADER") return "Leader";
+    if (/^(QL|BM|AM|TPKD|QLCN)/.test(code) || ["BRANCH_MANAGER", "AREA_MANAGER"].includes(role)) return "Quản lý";
+    if (/^U\d+/i.test(code)) return "Khối văn phòng/BLĐ";
+    return "Nhân sự khác";
+  }
+  function valueMatchesSelected(value, selected) {
+    return !selected || sameText(value, selected);
+  }
 
   function toast(message, type = "ok", duration = 3200) {
     const host = $("toastHost");
@@ -92,6 +179,55 @@
   function openModal(id) { $(id)?.classList.remove("hidden"); }
   function closeModal(id) { $(id)?.classList.add("hidden"); }
 
+  function clearPortalPasswordForm() {
+    ["portalCurrentPasswordInput", "portalNewPasswordInput", "portalConfirmNewPasswordInput"].forEach(id => {
+      if ($(id)) $(id).value = "";
+    });
+    showMessage($("portalPasswordMessage"), "");
+  }
+
+  function openPortalPasswordModal() {
+    clearPortalPasswordForm();
+    openModal("portalPasswordModal");
+    setTimeout(() => $("portalCurrentPasswordInput")?.focus(), 50);
+  }
+
+  function closePortalPasswordModal() {
+    closeModal("portalPasswordModal");
+    clearPortalPasswordForm();
+  }
+
+  async function submitPortalPasswordChange() {
+    const currentPassword = $("portalCurrentPasswordInput")?.value || "";
+    const newPassword = $("portalNewPasswordInput")?.value || "";
+    const confirmPassword = $("portalConfirmNewPasswordInput")?.value || "";
+    const message = $("portalPasswordMessage");
+    if (!currentPassword || !newPassword || !confirmPassword) return showMessage(message, "Vui lòng nhập đầy đủ thông tin.", "err");
+    if (newPassword.length < 8) return showMessage(message, "Mật khẩu mới cần tối thiểu 8 ký tự.", "err");
+    if (newPassword !== confirmPassword) return showMessage(message, "Mật khẩu mới nhập lại chưa khớp.", "err");
+    if (currentPassword === newPassword) return showMessage(message, "Mật khẩu mới không nên trùng mật khẩu hiện tại.", "err");
+    const email = state.user?.email || state.profile?.email;
+    if (!email) return showMessage(message, "Không tìm thấy email tài khoản. Vui lòng đăng nhập lại.", "err");
+
+    const button = $("submitPortalPasswordBtn");
+    setLoading(button, true, "Đang xác thực...");
+    showMessage(message, "Đang xác thực mật khẩu hiện tại...");
+    try {
+      const verifyRes = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+      if (verifyRes.error) return showMessage(message, "Mật khẩu hiện tại chưa đúng.", "err");
+      showMessage(message, "Mật khẩu hiện tại đúng. Đang cập nhật mật khẩu mới...");
+      const updateRes = await supabase.auth.updateUser({ password: newPassword });
+      if (updateRes.error) throw updateRes.error;
+      showMessage(message, "Đổi mật khẩu thành công.", "ok");
+      toast("Đã đổi mật khẩu thành công.");
+      setTimeout(closePortalPasswordModal, 700);
+    } catch (error) {
+      showMessage(message, `Không đổi được mật khẩu: ${error.message || error}`, "err");
+    } finally {
+      setLoading(button, false);
+    }
+  }
+
   function migrationError(error) {
     const message = error?.message || String(error || "");
     return /does not exist|schema cache|relation .* not found|column .* not found/i.test(message)
@@ -116,6 +252,27 @@
     const body = await response.json().catch(() => ({}));
     if (!response.ok || body.ok === false) {
       throw new Error(body.message || body.error || `Google Workspace Bridge trả lỗi ${response.status}.`);
+    }
+    return body;
+  }
+
+  async function invokeProtectedFunction(functionName, payload = {}) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+
+    const response = await fetch(`${window.UWS.SUPABASE_URL.replace(/\/$/, "")}/functions/v1/${functionName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+        "apikey": window.UWS.SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.ok === false) {
+      throw new Error(body.message || body.error || `${functionName} trả lỗi ${response.status}.`);
     }
     return body;
   }
@@ -169,6 +326,7 @@
       option.disabled = profile.role_type === "SUPER_ADMIN" ? targetRank > callerRank : targetRank >= callerRank;
     });
     document.querySelectorAll(".manager-nav,.manager-card,.manager-page,.manager-filter").forEach(el => el.classList.toggle("hidden", !isManager()));
+    renderEmployeeColumnControls();
     if (!isHR() && state.page === "import") goToPage("dashboard");
     if (!isManager() && ["employees", "organization"].includes(state.page)) goToPage("dashboard");
   }
@@ -178,6 +336,9 @@
     document.querySelectorAll("[data-goto]").forEach(btn => btn.addEventListener("click", () => goToPage(btn.dataset.goto)));
     $("portalMenuBtn")?.addEventListener("click", () => $("portalSidebar")?.classList.toggle("open"));
     $("portalLogoutBtn")?.addEventListener("click", async () => { await supabase.auth.signOut(); window.location.replace("./index.html"); });
+    $("portalChangePasswordBtn")?.addEventListener("click", openPortalPasswordModal);
+    $("submitPortalPasswordBtn")?.addEventListener("click", submitPortalPasswordChange);
+    document.querySelectorAll("[data-close-portal-password]").forEach(el => el.addEventListener("click", closePortalPasswordModal));
     $("portalRefreshBtn")?.addEventListener("click", refreshCurrentPage);
     $("portalInboxBtn")?.addEventListener("click", () => goToPage("announcements"));
     $("openScheduleBtn")?.addEventListener("click", () => goToPage("schedule"));
@@ -202,7 +363,13 @@
     $("saveCaseAssignmentBtn")?.addEventListener("click", saveCaseAssignment);
     ["caseSearch","caseStatusFilter","casePriorityFilter","caseAreaFilter"].forEach(id => $(id)?.addEventListener("input", renderCases));
 
-    ["employeeSearch","employeeStatusFilter","employeeDepartmentFilter","employeeAreaFilter","employeeBranchFilter","employeeTeamFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeQualityFilter","employeeSortSelect","employeeGroupSelect"].forEach(id => $(id)?.addEventListener("input", () => { state.employeePage = 1; renderEmployees(); }));
+    ["employeeSearch","employeeStatusFilter","employeeCodeGroupFilter","employeeDepartmentFilter","employeeAreaFilter","employeeBranchFilter","employeeTeamFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeBankFilter","employeeQualityFilter","employeeSortSelect","employeeGroupSelect"].forEach(id => $(id)?.addEventListener("input", event => { state.employeePage = 1; rebuildEmployeeFilters(event.target.id); renderEmployees(); }));
+    $("employeeColumnButtons")?.addEventListener("click", event => {
+      const button = event.target.closest("[data-employee-column]");
+      if (!button || button.disabled) return;
+      toggleEmployeeColumn(button.dataset.employeeColumn);
+    });
+    $("exportFilteredEmployeesBtn")?.addEventListener("click", exportFilteredEmployees);
     $("applyEmployeeSmartFilterBtn")?.addEventListener("click", applyEmployeeSmartFilter);
     $("employeeSmartFilter")?.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); applyEmployeeSmartFilter(); } });
     $("clearEmployeeFiltersBtn")?.addEventListener("click", clearEmployeeFilters);
@@ -215,6 +382,15 @@
     $("addEmployeeBtn")?.addEventListener("click", () => openModal("addEmployeeModal"));
     document.querySelectorAll("[data-close-add-employee]").forEach(el => el.addEventListener("click", () => closeModal("addEmployeeModal")));
     $("createEmployeeBtn")?.addEventListener("click", createEmployee);
+
+    $("bulkCreateAccountsBtn")?.addEventListener("click", openBulkAccountModal);
+    document.querySelectorAll("[data-close-bulk-account]").forEach(el => el.addEventListener("click", () => closeModal("bulkAccountModal")));
+    $("refreshBulkAccountsBtn")?.addEventListener("click", loadBulkAccountPreview);
+    $("selectEligibleBulkBtn")?.addEventListener("click", selectAllEligibleBulkAccounts);
+    $("clearBulkSelectionBtn")?.addEventListener("click", clearBulkAccountSelection);
+    $("createBulkAccountsBtn")?.addEventListener("click", createBulkAccounts);
+    ["bulkAccountSearch","bulkAccountStatusFilter","bulkAccountAreaFilter","bulkAccountBranchFilter","bulkAccountTeamFilter"].forEach(id => $(id)?.addEventListener("input", renderBulkAccountTable));
+    $("toggleBulkVisible")?.addEventListener("change", toggleVisibleBulkAccounts);
     $("editEmployeeBtn")?.addEventListener("click", () => renderEmployeeDetail(true));
     $("cancelEmployeeEditBtn")?.addEventListener("click", () => renderEmployeeDetail(false));
     $("saveEmployeeBtn")?.addEventListener("click", saveEmployeeDetail);
@@ -255,6 +431,9 @@
         updateImportCommitState();
       }
       if (window.innerWidth <= 820 && event.target.closest(".portal-nav-item")) $("portalSidebar")?.classList.remove("open");
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closePortalPasswordModal();
     });
   }
 
@@ -757,7 +936,7 @@
         employee = data;
         if (!state.employees.some(row => row.id === data.id)) state.employees.push(data);
       }
-      const fields = [["Mã nhân sự",employee.employee_code],["Họ tên",employee.full_name],["Phòng ban",employee.department],["Khu vực",employee.area],["Chi nhánh",employee.branch],["Team",employee.team],["Chức danh",employee.title],["Cấp bậc",employee.employment_level],["Email",employee.work_email || employee.personal_email],["Điện thoại",employee.phone],["Trạng thái",EMPLOYEE_STATUS_LABELS[employee.employment_status]]];
+      const fields = [["Mã nhân sự",employee.employee_code],["Họ tên",employee.full_name],["Nick Name",employee.nickname],["Nhóm nhân sự",employeeCodeGroup(employee)],["Phòng ban",employee.department],["Khu vực",employee.area],["Chi nhánh",employee.branch],["Team",employee.team],["Chức danh",employee.title],["Cấp bậc",employee.employment_level],["Email",employee.work_email || employee.personal_email],["Điện thoại",employee.phone],["Trạng thái",EMPLOYEE_STATUS_LABELS[employee.employment_status]]];
       host.innerHTML = `<div class="employee-detail-grid">${fields.map(([label,value])=>`<div class="employee-field"><span>${escapeHtml(label)}</span><b>${escapeHtml(value || "—")}</b></div>`).join("")}</div>`;
       $("openMyEmployeeDetailBtn").disabled = false;
     } catch (error) {
@@ -782,11 +961,28 @@
         response = await supabase.from("employees").select("*").order("full_name", { ascending: true }).limit(2500);
       }
       if (response.error) throw response.error;
-      state.employees = response.data || [];
-      populateEmployeeFilters();
+      state.employees = (response.data || []).map(row => ({
+        ...row,
+        employee_code: canonicalDisplay(row.employee_code, "employee_code") || row.employee_code,
+        full_name: canonicalDisplay(row.full_name, "full_name") || row.full_name,
+        department: canonicalDisplay(row.department, "department") || row.department,
+        area: canonicalDisplay(row.area, "area") || row.area,
+        branch: canonicalDisplay(row.branch, "branch") || row.branch,
+        team: canonicalDisplay(row.team, "team") || row.team,
+        employment_type: canonicalDisplay(row.employment_type, "type") || row.employment_type,
+        nickname: canonicalDisplay(row.nickname, "nickname") || row.nickname
+      }));
+      state.employeePrivateById = new Map();
+      if (isHR() && state.employees.length) {
+        const privateRes = await supabase.from("employee_private").select("employee_id,bank_name,bank_account").limit(5000);
+        if (!privateRes.error) {
+          (privateRes.data || []).forEach(row => state.employeePrivateById.set(row.employee_id, row));
+        }
+      }
+      rebuildEmployeeFilters();
       renderEmployees();
     } catch (error) {
-      $("employeeTable").innerHTML = `<tr><td colspan="11" class="empty-row">${escapeHtml(migrationError(error))}</td></tr>`;
+      $("employeeTable").innerHTML = `<tr><td colspan="14" class="empty-row">${escapeHtml(migrationError(error))}</td></tr>`;
     }
   }
 
@@ -794,17 +990,88 @@
     if (!select) return;
     const current = select.value;
     select.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>` + values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
-    if (values.includes(current)) select.value = current;
+    const match = values.find(value => sameText(value, current));
+    if (match) select.value = match;
   }
 
   function populateEmployeeFilters() {
-    populateSelect($("employeeDepartmentFilter"), unique(state.employees.map(row => row.department)), "Tất cả phòng ban");
-    populateSelect($("employeeAreaFilter"), unique(state.employees.map(row => row.area)), "Tất cả khu vực");
-    populateSelect($("employeeBranchFilter"), unique(state.employees.map(row => row.branch)), "Tất cả chi nhánh");
-    populateSelect($("employeeTeamFilter"), unique(state.employees.map(row => row.team)), "Tất cả team");
-    populateSelect($("employeeTitleFilter"), unique(state.employees.map(row => row.title)), "Tất cả chức danh");
-    populateSelect($("employeeLevelFilter"), unique(state.employees.map(row => row.employment_level)), "Tất cả cấp bậc");
-    populateSelect($("employeeTypeFilter"), unique(state.employees.map(row => row.employment_type)), "Tất cả loại công việc");
+    rebuildEmployeeFilters();
+  }
+
+  function employeeFilterState() {
+    return {
+      status: $("employeeStatusFilter")?.value || "",
+      codeGroup: $("employeeCodeGroupFilter")?.value || "",
+      department: $("employeeDepartmentFilter")?.value || "",
+      area: $("employeeAreaFilter")?.value || "",
+      branch: $("employeeBranchFilter")?.value || "",
+      team: $("employeeTeamFilter")?.value || "",
+      title: $("employeeTitleFilter")?.value || "",
+      level: $("employeeLevelFilter")?.value || "",
+      type: $("employeeTypeFilter")?.value || "",
+      bank: $("employeeBankFilter")?.value || "",
+      quality: $("employeeQualityFilter")?.value || ""
+    };
+  }
+
+  function employeeMatchesField(row, field, selected) {
+    if (!selected) return true;
+    if (field === "status") return row.employment_status === selected;
+    if (field === "quality") return row.data_quality === selected;
+    if (field === "codeGroup") return sameText(employeeCodeGroup(row), selected);
+    if (field === "level") return sameText(row.employment_level, selected);
+    if (field === "type") return sameText(row.employment_type, selected);
+    if (field === "bank") return sameText(employeePrivate(row).bank_name, selected);
+    return sameText(row[field], selected);
+  }
+
+  function rowsMatchingEmployeeFilter(filter, skippedFields = []) {
+    const skip = new Set(skippedFields);
+    return state.employees.filter(row => Object.entries(filter).every(([field, selected]) => skip.has(field) || employeeMatchesField(row, field, selected)));
+  }
+
+  function rebuildEmployeeFilters(changedId = "") {
+    const filter = employeeFilterState();
+    const hierarchy = ["department", "area", "branch", "team"];
+    const changedField = {
+      employeeDepartmentFilter: "department",
+      employeeAreaFilter: "area",
+      employeeBranchFilter: "branch",
+      employeeTeamFilter: "team"
+    }[changedId];
+    if (changedField) {
+      const changedIndex = hierarchy.indexOf(changedField);
+      hierarchy.slice(changedIndex + 1).forEach(field => {
+        const id = `employee${field.charAt(0).toUpperCase()}${field.slice(1)}Filter`;
+        if ($(id)) $(id).value = "";
+        filter[field] = "";
+      });
+    }
+
+    const codeRows = rowsMatchingEmployeeFilter(filter, ["codeGroup", "department", "area", "branch", "team", "title", "level", "type", "bank"]);
+    populateSelect($("employeeCodeGroupFilter"), uniqueCanonical(codeRows.map(employeeCodeGroup), "codeGroup"), "Tất cả nhóm");
+    filter.codeGroup = $("employeeCodeGroupFilter")?.value || "";
+
+    const departmentRows = rowsMatchingEmployeeFilter(filter, ["department", "area", "branch", "team", "title", "level", "type", "bank"]);
+    populateSelect($("employeeDepartmentFilter"), uniqueCanonical(departmentRows.map(row => row.department), "department"), "Tất cả phòng ban");
+    filter.department = $("employeeDepartmentFilter")?.value || "";
+
+    const areaRows = rowsMatchingEmployeeFilter(filter, ["area", "branch", "team", "title", "level", "type", "bank"]);
+    populateSelect($("employeeAreaFilter"), uniqueCanonical(areaRows.map(row => row.area), "area"), "Tất cả khu vực");
+    filter.area = $("employeeAreaFilter")?.value || "";
+
+    const branchRows = rowsMatchingEmployeeFilter(filter, ["branch", "team", "title", "level", "type", "bank"]);
+    populateSelect($("employeeBranchFilter"), uniqueCanonical(branchRows.map(row => row.branch), "branch"), "Tất cả chi nhánh");
+    filter.branch = $("employeeBranchFilter")?.value || "";
+
+    const teamRows = rowsMatchingEmployeeFilter(filter, ["team", "title", "level", "type", "bank"]);
+    populateSelect($("employeeTeamFilter"), uniqueCanonical(teamRows.map(row => row.team), "team"), "Tất cả team");
+
+    const scopedRows = rowsMatchingEmployeeFilter(employeeFilterState(), ["title", "level", "type", "bank"]);
+    populateSelect($("employeeTitleFilter"), uniqueCanonical(scopedRows.map(row => row.title), "title"), "Tất cả chức danh");
+    populateSelect($("employeeLevelFilter"), uniqueCanonical(scopedRows.map(row => row.employment_level), "level"), "Tất cả cấp bậc");
+    populateSelect($("employeeTypeFilter"), uniqueCanonical(scopedRows.map(row => row.employment_type), "type"), "Tất cả loại công việc");
+    if (isHR()) populateSelect($("employeeBankFilter"), uniqueCanonical(scopedRows.map(row => employeePrivate(row).bank_name), "bank"), "Tất cả ngân hàng");
   }
 
   function findDimensionMention(query, values) {
@@ -829,13 +1096,15 @@
     if (/cần rà soát|can ra soat|dữ liệu lỗi|du lieu loi/.test(query)) { filter.quality = "needs_review"; filter.labels.push("Cần rà soát"); }
 
     const dimensions = {
+      codeGroup: findDimensionMention(query, unique(state.employees.map(employeeCodeGroup))),
       department: findDimensionMention(query, unique(state.employees.map(row => row.department))),
       area: findDimensionMention(query, unique(state.employees.map(row => row.area))),
       branch: findDimensionMention(query, unique(state.employees.map(row => row.branch))),
       team: findDimensionMention(query, unique(state.employees.map(row => row.team))),
       title: findDimensionMention(query, unique(state.employees.map(row => row.title))),
       level: findDimensionMention(query, unique(state.employees.map(row => row.employment_level))),
-      type: findDimensionMention(query, unique(state.employees.map(row => row.employment_type)))
+      type: findDimensionMention(query, unique(state.employees.map(row => row.employment_type))),
+      bank: findDimensionMention(query, unique([...state.employeePrivateById.values()].map(row => row.bank_name)))
     };
     Object.entries(dimensions).forEach(([key, value]) => {
       if (!value) return;
@@ -879,12 +1148,13 @@
 
   function clearEmployeeFilters() {
     ["employeeSearch","employeeSmartFilter"].forEach(id => { if ($(id)) $(id).value = ""; });
-    ["employeeStatusFilter","employeeDepartmentFilter","employeeAreaFilter","employeeBranchFilter","employeeTeamFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeQualityFilter"].forEach(id => { if ($(id)) $(id).value = ""; });
+    ["employeeStatusFilter","employeeCodeGroupFilter","employeeDepartmentFilter","employeeAreaFilter","employeeBranchFilter","employeeTeamFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeBankFilter","employeeQualityFilter"].forEach(id => { if ($(id)) $(id).value = ""; });
     if ($("employeeSortSelect")) $("employeeSortSelect").value = "organization";
-    if ($("employeeGroupSelect")) $("employeeGroupSelect").value = "hierarchy_label";
+    if ($("employeeGroupSelect")) $("employeeGroupSelect").value = "department";
     state.employeeSmartFilter = {};
     state.employeePage = 1;
     renderSmartFilterChips();
+    rebuildEmployeeFilters();
     renderEmployees();
   }
 
@@ -892,14 +1162,16 @@
     const f = state.employeeSmartFilter || {};
     if (f.status && row.employment_status !== f.status) return false;
     if (f.quality && row.data_quality !== f.quality) return false;
-    if (f.department && row.department !== f.department) return false;
-    if (f.area && row.area !== f.area) return false;
-    if (f.branch && row.branch !== f.branch) return false;
-    if (f.team && row.team !== f.team) return false;
-    if (f.title && row.title !== f.title) return false;
-    if (f.level && row.employment_level !== f.level) return false;
-    if (f.type && row.employment_type !== f.type) return false;
-    if (f.hierarchyLabel && row.hierarchy_label !== f.hierarchyLabel) return false;
+    if (f.department && !sameText(row.department, f.department)) return false;
+    if (f.codeGroup && !sameText(employeeCodeGroup(row), f.codeGroup)) return false;
+    if (f.area && !sameText(row.area, f.area)) return false;
+    if (f.branch && !sameText(row.branch, f.branch)) return false;
+    if (f.team && !sameText(row.team, f.team)) return false;
+    if (f.title && !sameText(row.title, f.title)) return false;
+    if (f.level && !sameText(row.employment_level, f.level)) return false;
+    if (f.type && !sameText(row.employment_type, f.type)) return false;
+    if (f.bank && !sameText(employeePrivate(row).bank_name, f.bank)) return false;
+    if (f.hierarchyLabel && !sameText(row.hierarchy_label, f.hierarchyLabel)) return false;
     if (Number.isFinite(f.maxHierarchyRank) && Number(row.hierarchy_rank || 999) > f.maxHierarchyRank) return false;
     if (Number.isFinite(f.minHierarchyRank) && Number(row.hierarchy_rank || 999) < f.minHierarchyRank) return false;
     if (f.missingCode && String(row.employee_code || "").trim()) return false;
@@ -910,6 +1182,7 @@
   function filteredEmployees() {
     const search = normalize($("employeeSearch")?.value);
     const status = $("employeeStatusFilter")?.value || "";
+    const codeGroup = $("employeeCodeGroupFilter")?.value || "";
     const department = $("employeeDepartmentFilter")?.value || "";
     const area = $("employeeAreaFilter")?.value || "";
     const branch = $("employeeBranchFilter")?.value || "";
@@ -917,17 +1190,21 @@
     const title = $("employeeTitleFilter")?.value || "";
     const level = $("employeeLevelFilter")?.value || "";
     const type = $("employeeTypeFilter")?.value || "";
+    const bank = $("employeeBankFilter")?.value || "";
     const quality = $("employeeQualityFilter")?.value || "";
     return state.employees.filter(row => {
-      if (search && !normalize(`${row.employee_code} ${row.full_name} ${row.work_email} ${row.personal_email} ${row.phone} ${row.department} ${row.area} ${row.branch} ${row.team} ${row.title} ${row.employment_level}`).includes(search)) return false;
+      const privateData = employeePrivate(row);
+      if (search && !normalize(`${row.employee_code} ${row.full_name} ${row.nickname} ${row.work_email} ${row.personal_email} ${row.phone} ${row.department} ${row.area} ${row.branch} ${row.team} ${row.title} ${row.employment_level} ${row.employment_type} ${privateData.bank_name} ${privateData.bank_account}`).includes(search)) return false;
       if (status && row.employment_status !== status) return false;
-      if (department && row.department !== department) return false;
-      if (area && row.area !== area) return false;
-      if (branch && row.branch !== branch) return false;
-      if (team && row.team !== team) return false;
-      if (title && row.title !== title) return false;
-      if (level && row.employment_level !== level) return false;
-      if (type && row.employment_type !== type) return false;
+      if (codeGroup && !sameText(employeeCodeGroup(row), codeGroup)) return false;
+      if (department && !sameText(row.department, department)) return false;
+      if (area && !sameText(row.area, area)) return false;
+      if (branch && !sameText(row.branch, branch)) return false;
+      if (team && !sameText(row.team, team)) return false;
+      if (title && !sameText(row.title, title)) return false;
+      if (level && !sameText(row.employment_level, level)) return false;
+      if (type && !sameText(row.employment_type, type)) return false;
+      if (bank && !sameText(privateData.bank_name, bank)) return false;
       if (quality && row.data_quality !== quality) return false;
       return smartFilterMatches(row);
     });
@@ -951,12 +1228,96 @@
   }
 
   function employeeGroupLabel(row, mode) {
-    if (mode === "department") return row.department || "Chưa có phòng ban";
-    if (mode === "area") return row.area || "Chưa có khu vực";
-    if (mode === "branch") return row.branch || "Chưa có chi nhánh";
-    if (mode === "team") return row.team || "Chưa có team";
+    if (mode === "department") return employeeDisplay(row, "department") || "Chưa có phòng ban";
+    if (mode === "area") return employeeDisplay(row, "area") || "Chưa có khu vực";
+    if (mode === "branch") return employeeDisplay(row, "branch") || "Chưa có chi nhánh";
+    if (mode === "team") return employeeDisplay(row, "team") || "Chưa có team";
     if (mode === "hierarchy_label") return row.hierarchy_label || "Nhân viên / CTV";
     return "";
+  }
+
+  const EMPLOYEE_COLUMN_STORAGE_KEY = "uws_employee_columns_v2";
+  const EMPLOYEE_TABLE_COLUMNS = [
+    { key: "employee_code", label: "Mã", exportLabel: "Mã NV", locked: true, render: row => `<b>${tableCellText(employeeDisplay(row, "employee_code"))}</b>`, export: row => employeeDisplay(row, "employee_code") },
+    { key: "full_name", label: "Họ tên", locked: true, render: row => tableCellText(employeeDisplay(row, "full_name")), export: row => employeeDisplay(row, "full_name") },
+    { key: "nickname", label: "Nick Name", render: row => tableCellText(employeeDisplay(row, "nickname")), export: row => employeeDisplay(row, "nickname") },
+    { key: "code_group", label: "Nhóm", exportLabel: "Nhóm nhân sự", render: row => tableCellText(employeeCodeGroup(row)), export: row => employeeCodeGroup(row) },
+    { key: "department", label: "Phòng ban", render: row => tableCellText(employeeDisplay(row, "department")), export: row => employeeDisplay(row, "department") },
+    { key: "area", label: "Khu vực", render: row => tableCellText(employeeDisplay(row, "area")), export: row => employeeDisplay(row, "area") },
+    { key: "branch", label: "Chi nhánh", render: row => tableCellText(employeeDisplay(row, "branch")), export: row => employeeDisplay(row, "branch") },
+    { key: "team", label: "Team", render: row => tableCellText(employeeDisplay(row, "team")), export: row => employeeDisplay(row, "team") },
+    { key: "title", label: "Chức danh", render: row => tableCellText(row.title), export: row => row.title || "" },
+    { key: "level", label: "Cấp bậc", render: row => tableCellText(row.employment_level), export: row => row.employment_level || "" },
+    { key: "type", label: "Loại", exportLabel: "Loại công việc", render: row => tableCellText(employeeDisplay(row, "type")), export: row => employeeDisplay(row, "type") },
+    { key: "bank", label: "Ngân hàng", hrOnly: true, render: row => tableCellText(employeePrivate(row).bank_name), export: row => employeePrivate(row).bank_name || "" },
+    { key: "bank_account", label: "Số TK", exportLabel: "Số tài khoản", hrOnly: true, defaultVisible: false, render: row => tableCellText(employeePrivate(row).bank_account), export: row => employeePrivate(row).bank_account || "" },
+    { key: "work_email", label: "Email", defaultVisible: false, render: row => tableCellText(row.work_email || row.personal_email), export: row => row.work_email || row.personal_email || "" },
+    { key: "phone", label: "SĐT", defaultVisible: false, render: row => tableCellText(row.phone), export: row => row.phone || "" },
+    { key: "quality", label: "Dữ liệu", defaultVisible: false, render: row => tableCellText(row.data_quality), export: row => row.data_quality || "" },
+    { key: "status", label: "Trạng thái", render: row => `<span class="badge ${row.employment_status === "active" ? "approved" : row.employment_status === "resigned" ? "rejected" : "pending"}">${escapeHtml(EMPLOYEE_STATUS_LABELS[row.employment_status] || row.employment_status)}</span>`, export: row => EMPLOYEE_STATUS_LABELS[row.employment_status] || row.employment_status || "" }
+  ];
+
+  function availableEmployeeColumns() {
+    return EMPLOYEE_TABLE_COLUMNS.filter(column => !column.hrOnly || isHR());
+  }
+
+  function defaultEmployeeColumnKeys() {
+    return availableEmployeeColumns().filter(column => column.defaultVisible !== false).map(column => column.key);
+  }
+
+  function ensureEmployeeVisibleColumns() {
+    const validKeys = new Set(availableEmployeeColumns().map(column => column.key));
+    if (!state.employeeVisibleColumns) {
+      let stored = null;
+      try { stored = JSON.parse(localStorage.getItem(EMPLOYEE_COLUMN_STORAGE_KEY) || "null"); } catch (_) { stored = null; }
+      const initial = Array.isArray(stored) ? stored.filter(key => validKeys.has(key)) : defaultEmployeeColumnKeys();
+      state.employeeVisibleColumns = new Set(initial.length ? initial : defaultEmployeeColumnKeys());
+    }
+    availableEmployeeColumns().filter(column => column.locked).forEach(column => state.employeeVisibleColumns.add(column.key));
+    [...state.employeeVisibleColumns].forEach(key => { if (!validKeys.has(key)) state.employeeVisibleColumns.delete(key); });
+    return state.employeeVisibleColumns;
+  }
+
+  function visibleEmployeeColumns() {
+    const selected = ensureEmployeeVisibleColumns();
+    return availableEmployeeColumns().filter(column => selected.has(column.key));
+  }
+
+  function saveEmployeeVisibleColumns() {
+    try { localStorage.setItem(EMPLOYEE_COLUMN_STORAGE_KEY, JSON.stringify([...ensureEmployeeVisibleColumns()])); } catch (_) {}
+  }
+
+  function toggleEmployeeColumn(key) {
+    const column = availableEmployeeColumns().find(item => item.key === key);
+    if (!column || column.locked) return;
+    const selected = ensureEmployeeVisibleColumns();
+    if (selected.has(key)) selected.delete(key); else selected.add(key);
+    saveEmployeeVisibleColumns();
+    renderEmployeeColumnControls();
+    renderEmployees();
+  }
+
+  function renderEmployeeColumnControls() {
+    const host = $("employeeColumnButtons");
+    if (!host) return;
+    const selected = ensureEmployeeVisibleColumns();
+    host.innerHTML = availableEmployeeColumns().map(column => `
+      <button type="button" class="employee-column-chip ${selected.has(column.key) ? "active" : ""}" data-employee-column="${column.key}" ${column.locked ? "disabled" : ""}>
+        ${escapeHtml(column.label)}
+      </button>
+    `).join("");
+  }
+
+  function tableCellText(value, className = "") {
+    const display = String(value ?? "").trim() || "—";
+    const classSuffix = className ? ` ${className}` : "";
+    return `<span class="cell-text${classSuffix}" title="${escapeHtml(display)}">${escapeHtml(display)}</span>`;
+  }
+
+  function compactTableCell(value, className = "") {
+    const display = String(value ?? "").trim() || "—";
+    const classSuffix = className ? ` ${className}` : "";
+    return `<span class="cell-clip${classSuffix}" title="${escapeHtml(display)}">${escapeHtml(display)}</span>`;
   }
 
   function renderEmployees() {
@@ -965,24 +1326,27 @@
     state.employeePage = Math.min(state.employeePage, pages);
     const start = (state.employeePage - 1) * state.employeePageSize;
     const pageRows = rows.slice(start, start + state.employeePageSize);
-    const groupMode = $("employeeGroupSelect")?.value || "hierarchy_label";
+    const groupMode = $("employeeGroupSelect")?.value || "department";
+    const columns = visibleEmployeeColumns();
+    const table = document.querySelector(".employee-data-grid table");
+    if (table) table.style.minWidth = `${Math.min(1420, Math.max(860, columns.length * 122 + 96))}px`;
+    if ($("employeeTableHead")) {
+      $("employeeTableHead").innerHTML = `<tr>${columns.map(column => `<th data-employee-col="${column.key}">${escapeHtml(column.label)}</th>`).join("")}<th class="employee-action-col"></th></tr>`;
+    }
     let lastGroup = null;
     const html = [];
     pageRows.forEach(row => {
       const group = employeeGroupLabel(row, groupMode);
       if (groupMode !== "none" && group !== lastGroup) {
         const groupCount = rows.filter(item => employeeGroupLabel(item, groupMode) === group).length;
-        html.push(`<tr class="employee-group-row"><td colspan="11"><span>${escapeHtml(group)}</span><b>${groupCount} nhân sự</b></td></tr>`);
+        html.push(`<tr class="employee-group-row"><td colspan="${columns.length + 1}"><span>${escapeHtml(group)}</span><b>${groupCount} nhân sự</b></td></tr>`);
         lastGroup = group;
       }
       html.push(`<tr>
-        <td><b>${escapeHtml(row.employee_code || "—")}</b></td><td>${escapeHtml(row.full_name)}</td><td>${escapeHtml(row.department || "—")}</td>
-        <td>${escapeHtml(row.area || "—")}</td><td>${escapeHtml(row.branch || "—")}</td><td>${escapeHtml(row.team || "—")}</td>
-        <td>${escapeHtml(row.title || "—")}</td><td>${escapeHtml(row.employment_level || "—")}</td><td>${escapeHtml(row.employment_type || "—")}</td>
-        <td><span class="badge ${row.employment_status === "active" ? "approved" : row.employment_status === "resigned" ? "rejected" : "pending"}">${escapeHtml(EMPLOYEE_STATUS_LABELS[row.employment_status] || row.employment_status)}</span></td>
+        ${columns.map(column => `<td data-employee-col="${column.key}">${column.render(row)}</td>`).join("")}
         <td><button class="btn ghost compact-btn" data-employee-id="${row.id}">Xem</button></td></tr>`);
     });
-    $("employeeTable").innerHTML = html.length ? html.join("") : '<tr><td colspan="11" class="empty-row">Không có nhân sự phù hợp.</td></tr>';
+    $("employeeTable").innerHTML = html.length ? html.join("") : `<tr><td colspan="${columns.length + 1}" class="empty-row">Không có nhân sự phù hợp.</td></tr>`;
     if ($("employeeResultCount")) $("employeeResultCount").textContent = `${rows.length.toLocaleString("vi-VN")} nhân sự`;
     renderPagination(pages);
   }
@@ -996,8 +1360,50 @@
     host.querySelectorAll("[data-employee-page]").forEach(btn => btn.addEventListener("click", () => { state.employeePage = Number(btn.dataset.employeePage); renderEmployees(); }));
   }
 
+  function excelSafeName(value) {
+    return normalize(value || "tat-ca").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "tat-ca";
+  }
+
+  function exportFilteredEmployees() {
+    if (!isHR()) return;
+    const rows = sortEmployees(filteredEmployees());
+    if (!rows.length) return toast("Không có nhân sự phù hợp để xuất file.", "warn");
+    const exportColumns = visibleEmployeeColumns().filter(column => typeof column.export === "function");
+    const header = ["STT", ...exportColumns.map(column => column.exportLabel || column.label)];
+    const body = rows.map((row, index) => [index + 1, ...exportColumns.map(column => column.export(row, index))]);
+    const scope = [
+      $("employeeDepartmentFilter")?.value,
+      $("employeeAreaFilter")?.value,
+      $("employeeBranchFilter")?.value,
+      $("employeeTeamFilter")?.value,
+      $("employeeBankFilter")?.value
+    ].filter(Boolean).map(excelSafeName).join("-");
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `danh-sach-nhan-su-da-loc-${scope || "tat-ca"}-${stamp}.xlsx`;
+
+    if (window.XLSX?.utils) {
+      const wb = window.XLSX.utils.book_new();
+      const ws = window.XLSX.utils.aoa_to_sheet([header, ...body]);
+      ws["!cols"] = header.map((label, columnIndex) => ({
+        wch: Math.min(34, Math.max(String(label).length + 2, ...body.map(row => String(row[columnIndex] || "").length + 2)))
+      }));
+      window.XLSX.utils.book_append_sheet(wb, ws, "Danh sach da loc");
+      window.XLSX.writeFile(wb, filename, { compression: true });
+    } else {
+      const csv = [header, ...body].map(cols => cols.map(value => `"${String(value ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename.replace(/\.xlsx$/i, ".csv");
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    toast(`Đã xuất ${rows.length.toLocaleString("vi-VN")} nhân sự theo bộ lọc hiện tại.`);
+  }
+
   const EMPLOYEE_EDIT_FIELDS = [
-    ["employee_code", "Mã nhân sự"], ["full_name", "Họ tên"], ["department", "Phòng ban"], ["area", "Khu vực"], ["branch", "Chi nhánh"], ["team", "Team"],
+    ["employee_code", "Mã nhân sự"], ["full_name", "Họ tên"], ["nickname", "Nick Name"], ["department", "Phòng ban"], ["area", "Khu vực"], ["branch", "Chi nhánh"], ["team", "Team"],
     ["title", "Chức danh"], ["employment_level", "Cấp bậc"], ["employment_type", "Loại công việc"], ["work_email", "Email công việc"],
     ["personal_email", "Email cá nhân"], ["phone", "Điện thoại"], ["start_date", "Ngày bắt đầu", "date"], ["official_date", "Ngày chính thức", "date"],
     ["employment_status", "Trạng thái", "status"]
@@ -1133,6 +1539,7 @@
     const body = {
       employee_code: $("newEmployeeCode")?.value.trim(),
       full_name: $("newEmployeeName")?.value.trim(),
+      nickname: $("newEmployeeNickname")?.value.trim(),
       work_email: $("newEmployeeWorkEmail")?.value.trim(),
       personal_email: $("newEmployeePersonalEmail")?.value.trim(),
       phone: $("newEmployeePhone")?.value.trim(),
@@ -1174,6 +1581,234 @@
     finally { setLoading(button, false); }
   }
 
+
+  const BULK_ROLE_OPTIONS = [
+    ["SALE", "SALE"],
+    ["EMPLOYEE", "NHÂN VIÊN"],
+    ["TTS", "TTS"],
+    ["NVPT", "NVPT"],
+    ["LEADER", "LEADER"],
+    ["BRANCH_MANAGER", "QUẢN LÝ CHI NHÁNH"],
+    ["AREA_MANAGER", "QUẢN LÝ KHU VỰC"],
+    ["HR", "HR"]
+  ];
+
+  function bulkStatusLabel(status) {
+    return {
+      eligible: "Đủ điều kiện",
+      auth_orphan: "Auth chưa liên kết",
+      existing: "Đã có tài khoản",
+      inactive: "Không còn làm",
+      missing_code: "Thiếu mã",
+      missing_email: "Thiếu email",
+      invalid_email: "Email không hợp lệ",
+      duplicate_email: "Email bị trùng",
+      duplicate_code: "Mã bị trùng",
+      missing_scope: "Thiếu phạm vi",
+      invalid_role: "Vai trò chưa hợp lệ",
+      role_forbidden: "Không đủ quyền",
+      created: "Đã tạo",
+      linked: "Đã liên kết",
+      error: "Lỗi"
+    }[status] || status || "Cần rà soát";
+  }
+
+  function bulkStatusClass(row) {
+    if (["created","linked","existing"].includes(row.status)) return "approved";
+    if (row.eligible || row.status === "auth_orphan") return "pending";
+    return "rejected";
+  }
+
+  function bulkRoleOptions(selected) {
+    const roleRank = { SALE:10, EMPLOYEE:10, TTS:10, NVPT:10, LEADER:20, BRANCH_MANAGER:30, AREA_MANAGER:40, HR:50, ADMIN:60, SUPER_ADMIN:70 };
+    const callerRank = roleRank[state.profile?.role_type] || 0;
+    return BULK_ROLE_OPTIONS
+      .filter(([value]) => state.profile?.role_type === "SUPER_ADMIN" ? roleRank[value] <= callerRank : roleRank[value] < callerRank)
+      .map(([value,label]) => `<option value="${value}" ${value === selected ? "selected" : ""}>${label}</option>`)
+      .join("");
+  }
+
+  async function openBulkAccountModal() {
+    if (!canCreateEmployees()) return;
+    openModal("bulkAccountModal");
+    if (!state.bulkAccounts.length) await loadBulkAccountPreview();
+    else renderBulkAccountTable();
+  }
+
+  async function loadBulkAccountPreview() {
+    if (!canCreateEmployees() || state.bulkAccountBusy) return;
+    const button = $("refreshBulkAccountsBtn");
+    state.bulkAccountBusy = true;
+    setLoading(button, true, "Đang kiểm tra...");
+    showMessage($("bulkAccountMessage"), "Đang đối chiếu hồ sơ nhân sự, Auth và tài khoản hiện có...");
+    try {
+      const data = await invokeProtectedFunction("hr-bulk-create-users", { action: "preview" });
+      state.bulkAccounts = (data.rows || []).map(row => ({ ...row, selected_role: row.suggested_role }));
+      state.bulkSelected.clear();
+      populateSelect($("bulkAccountAreaFilter"), unique(state.bulkAccounts.map(row => row.area)), "Tất cả khu vực");
+      populateSelect($("bulkAccountBranchFilter"), unique(state.bulkAccounts.map(row => row.branch)), "Tất cả chi nhánh");
+      populateSelect($("bulkAccountTeamFilter"), unique(state.bulkAccounts.map(row => row.team)), "Tất cả team");
+      renderBulkAccountSummary();
+      renderBulkAccountTable();
+      showMessage($("bulkAccountMessage"), `Đã kiểm tra ${state.bulkAccounts.length.toLocaleString("vi-VN")} hồ sơ.`, "ok");
+    } catch (error) {
+      showMessage($("bulkAccountMessage"), migrationError(error), "err");
+      $("bulkAccountTable").innerHTML = `<tr><td colspan="6" class="empty-row">${escapeHtml(migrationError(error))}</td></tr>`;
+    } finally {
+      state.bulkAccountBusy = false;
+      setLoading(button, false);
+    }
+  }
+
+  function renderBulkAccountSummary() {
+    const rows = state.bulkAccounts;
+    const eligible = rows.filter(row => row.eligible).length;
+    const existing = rows.filter(row => row.status === "existing").length;
+    const review = rows.length - eligible - existing;
+    if ($("bulkTotalCount")) $("bulkTotalCount").textContent = rows.length.toLocaleString("vi-VN");
+    if ($("bulkEligibleCount")) $("bulkEligibleCount").textContent = eligible.toLocaleString("vi-VN");
+    if ($("bulkExistingCount")) $("bulkExistingCount").textContent = existing.toLocaleString("vi-VN");
+    if ($("bulkReviewCount")) $("bulkReviewCount").textContent = Math.max(0, review).toLocaleString("vi-VN");
+  }
+
+  function filteredBulkAccounts() {
+    const search = normalize($("bulkAccountSearch")?.value);
+    const status = $("bulkAccountStatusFilter")?.value || "";
+    const area = $("bulkAccountAreaFilter")?.value || "";
+    const branch = $("bulkAccountBranchFilter")?.value || "";
+    const team = $("bulkAccountTeamFilter")?.value || "";
+    return state.bulkAccounts.filter(row => {
+      if (search && !normalize(`${row.employee_code} ${row.full_name} ${row.email} ${row.department} ${row.area} ${row.branch} ${row.team}`).includes(search)) return false;
+      if (status === "eligible" && !(row.eligible && row.status !== "auth_orphan")) return false;
+      if (status === "auth_orphan" && row.status !== "auth_orphan") return false;
+      if (status === "existing" && row.status !== "existing") return false;
+      if (status === "problem" && (row.eligible || row.status === "existing")) return false;
+      if (area && row.area !== area) return false;
+      if (branch && row.branch !== branch) return false;
+      if (team && row.team !== team) return false;
+      return true;
+    });
+  }
+
+  function renderBulkAccountTable() {
+    const host = $("bulkAccountTable");
+    if (!host) return;
+    const rows = filteredBulkAccounts();
+    host.innerHTML = rows.length ? rows.map(row => {
+      const checked = state.bulkSelected.has(row.employee_id);
+      const scope = [row.department, row.area, row.branch, row.team].filter(Boolean).join(" • ") || "Chưa có phạm vi";
+      return `<tr class="${row.eligible ? "" : "bulk-row-disabled"}">
+        <td><input type="checkbox" data-bulk-select="${row.employee_id}" ${checked ? "checked" : ""} ${row.eligible ? "" : "disabled"} /></td>
+        <td><b>${escapeHtml(row.employee_code || "—")}</b><span class="bulk-person-name">${escapeHtml(row.full_name || "—")}</span></td>
+        <td>${escapeHtml(row.email || "—")}</td>
+        <td><span class="bulk-scope">${escapeHtml(scope)}</span></td>
+        <td>${row.eligible
+          ? `<select class="bulk-role-select" data-bulk-role="${row.employee_id}">${bulkRoleOptions(row.selected_role || row.suggested_role)}</select>`
+          : `<span>${escapeHtml(roleLabel(row.suggested_role))}</span>`}
+        </td>
+        <td><span class="badge ${bulkStatusClass(row)}">${escapeHtml(bulkStatusLabel(row.status))}</span><small class="bulk-status-message">${escapeHtml(row.message || "")}</small></td>
+      </tr>`;
+    }).join("") : '<tr><td colspan="6" class="empty-row">Không có hồ sơ phù hợp với bộ lọc.</td></tr>';
+
+    host.querySelectorAll("[data-bulk-select]").forEach(input => input.addEventListener("change", event => {
+      const id = event.target.dataset.bulkSelect;
+      if (event.target.checked) state.bulkSelected.add(id); else state.bulkSelected.delete(id);
+      updateBulkSelectionState();
+    }));
+    host.querySelectorAll("[data-bulk-role]").forEach(select => select.addEventListener("change", event => {
+      const row = state.bulkAccounts.find(item => item.employee_id === event.target.dataset.bulkRole);
+      if (row) row.selected_role = event.target.value;
+    }));
+    updateBulkSelectionState();
+  }
+
+  function updateBulkSelectionState() {
+    const count = state.bulkSelected.size;
+    if ($("bulkSelectedCount")) $("bulkSelectedCount").textContent = `Đã chọn ${count.toLocaleString("vi-VN")}`;
+    if ($("createBulkAccountsBtn")) $("createBulkAccountsBtn").disabled = !count || state.bulkAccountBusy;
+    const visibleEligible = filteredBulkAccounts().filter(row => row.eligible);
+    if ($("toggleBulkVisible")) {
+      $("toggleBulkVisible").checked = visibleEligible.length > 0 && visibleEligible.every(row => state.bulkSelected.has(row.employee_id));
+      $("toggleBulkVisible").indeterminate = visibleEligible.some(row => state.bulkSelected.has(row.employee_id)) && !$("toggleBulkVisible").checked;
+    }
+  }
+
+  function selectAllEligibleBulkAccounts() {
+    filteredBulkAccounts().filter(row => row.eligible).forEach(row => state.bulkSelected.add(row.employee_id));
+    renderBulkAccountTable();
+  }
+
+  function clearBulkAccountSelection() {
+    state.bulkSelected.clear();
+    renderBulkAccountTable();
+  }
+
+  function toggleVisibleBulkAccounts(event) {
+    filteredBulkAccounts().filter(row => row.eligible).forEach(row => {
+      if (event.target.checked) state.bulkSelected.add(row.employee_id);
+      else state.bulkSelected.delete(row.employee_id);
+    });
+    renderBulkAccountTable();
+  }
+
+  async function createBulkAccounts() {
+    if (!canCreateEmployees() || state.bulkAccountBusy || !state.bulkSelected.size) return;
+    const selected = [...state.bulkSelected]
+      .map(id => state.bulkAccounts.find(row => row.employee_id === id))
+      .filter(row => row?.eligible);
+    if (!selected.length) return;
+    const accepted = window.confirm(
+      `Tạo ${selected.length} tài khoản với mật khẩu tạm 12345678?\n\nNgười dùng sẽ bị buộc đổi mật khẩu ở lần đăng nhập đầu tiên.`
+    );
+    if (!accepted) return;
+
+    const button = $("createBulkAccountsBtn");
+    state.bulkAccountBusy = true;
+    setLoading(button, true, "Đang tạo...");
+    const progress = $("bulkProgressBar");
+    let completed = 0;
+    let success = 0;
+    let failed = 0;
+    const batchSize = 20;
+
+    try {
+      for (let index = 0; index < selected.length; index += batchSize) {
+        const chunk = selected.slice(index, index + batchSize);
+        showMessage($("bulkAccountMessage"), `Đang xử lý ${index + 1}–${Math.min(index + chunk.length, selected.length)} / ${selected.length}...`);
+        const data = await invokeProtectedFunction("hr-bulk-create-users", {
+          action: "create",
+          records: chunk.map(row => ({ employee_id: row.employee_id, role_type: row.selected_role || row.suggested_role }))
+        });
+        for (const result of data.results || []) {
+          const row = state.bulkAccounts.find(item => item.employee_id === result.employee_id);
+          if (!row) continue;
+          row.status = result.status;
+          row.message = result.message;
+          row.eligible = !result.ok;
+          if (result.ok) {
+            success++;
+            state.bulkSelected.delete(result.employee_id);
+          } else {
+            failed++;
+          }
+        }
+        completed += chunk.length;
+        if (progress) progress.style.width = `${Math.round(completed / selected.length * 100)}%`;
+        renderBulkAccountSummary();
+        renderBulkAccountTable();
+      }
+      showMessage($("bulkAccountMessage"), `Hoàn tất: ${success} tài khoản thành công, ${failed} lỗi/cần rà soát.`, failed ? "warn" : "ok");
+      toast(`Đã tạo ${success} tài khoản.`, failed ? "warn" : "ok", 5000);
+      await Promise.allSettled([loadHrDirectory(), loadDashboard()]);
+    } catch (error) {
+      showMessage($("bulkAccountMessage"), migrationError(error), "err");
+    } finally {
+      state.bulkAccountBusy = false;
+      setLoading(button, false);
+      updateBulkSelectionState();
+    }
+  }
+
   const CLUSTER_COLORS = {
     "tinh hoa": "#ef3340",
     "ky tai": "#f4c430",
@@ -1211,9 +1846,15 @@
     const activeEmployees = employees.filter(row => row.employment_status === "active");
     const countBy = key => activeEmployees.filter(row => row[key]).reduce((map,row) => map.set(row[key],(map.get(row[key])||0)+1),new Map());
     const areaCount=countBy("area_id"), branchCount=countBy("branch_id"), teamCount=countBy("team_id");
-    const areas = state.orgUnits.filter(u => u.unit_type === "area");
-    const branches = state.orgUnits.filter(u => u.unit_type === "branch");
-    const teams = state.orgUnits.filter(u => u.unit_type === "team");
+    const hasPeople = (counter, id) => (counter.get(id) || 0) > 0;
+    const teams = state.orgUnits.filter(u => u.unit_type === "team" && hasPeople(teamCount, u.id));
+    const branches = state.orgUnits.filter(u => u.unit_type === "branch" && (hasPeople(branchCount, u.id) || teams.some(team => team.parent_id === u.id)));
+    const areas = state.orgUnits.filter(u => {
+      if (u.unit_type !== "area") return false;
+      return hasPeople(areaCount, u.id)
+        || branches.some(branch => branch.parent_id === u.id)
+        || teams.some(team => team.parent_id === u.id);
+    });
     host.innerHTML = areas.length ? areas.map(area => {
       const color = clusterColor(area.name);
       const areaBranches = branches.filter(branch => branch.parent_id === area.id);
@@ -1257,11 +1898,11 @@
   }
 
   const IMPORT_COMPARE_FIELDS = [
-    "employee_code","full_name","work_email","personal_email","phone","department","area","branch","team","title",
+    "employee_code","full_name","nickname","work_email","personal_email","phone","department","area","branch","team","title",
     "employment_level","employment_type","start_date","official_date","end_date","employment_status"
   ];
 
-  function comparable(value) { return String(value ?? "").trim().toLowerCase(); }
+  function comparable(value) { return normalize(value); }
 
   function buildImportDiff(rows, existingRows) {
     const byCode = new Map(existingRows.filter(row => row.employee_code).map(row => [comparable(row.employee_code), row]));
@@ -1294,7 +1935,7 @@
         state.employees = existing;
       }
       state.importDiff = buildImportDiff(state.importResult.rows, existing);
-      state.importSelected = new Set(state.importDiff.filter(item => ["new","changed"].includes(item.status)).map(item => item.index));
+      state.importSelected = new Set(state.importDiff.filter(item => ["new","changed","review"].includes(item.status)).map(item => item.index));
       renderImportSummary();
       renderImportDiff();
       updateImportCommitState();
@@ -1338,11 +1979,11 @@
       return item && ["new","changed","review"].includes(item.status);
     }).length;
     button.disabled = count === 0;
-    button.textContent = count ? `Đồng bộ ${count} dòng thay đổi` : "Không có dòng cần đồng bộ";
+    button.textContent = count ? `Đồng bộ ${count} dòng cần đồng bộ` : "Không có dòng cần đồng bộ";
   }
 
   function selectChangedImportRows() {
-    state.importSelected = new Set(state.importDiff.filter(item => ["new","changed"].includes(item.status)).map(item => item.index));
+    state.importSelected = new Set(state.importDiff.filter(item => ["new","changed","review"].includes(item.status)).map(item => item.index));
     renderImportDiff();
   }
 

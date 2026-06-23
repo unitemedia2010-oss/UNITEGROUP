@@ -40,6 +40,57 @@ function clean(value: unknown): string | null {
   return result || null;
 }
 
+function fold(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function titleCase(value: unknown): string | null {
+  const raw = clean(value)?.replace(/\s+/g, " ");
+  if (!raw) return null;
+  return raw.toLocaleLowerCase("vi").replace(/(^|[\s-/])([^\s-/])/g, (_match, prefix, char) => `${prefix}${char.toLocaleUpperCase("vi")}`);
+}
+
+function canonicalText(value: unknown, field = ""): string | null {
+  const raw = clean(value)?.replace(/\s+/g, " ");
+  if (!raw) return null;
+  const key = fold(raw);
+  const special: Record<string, string> = {
+    hr: "HR",
+    admin: "Admin",
+    bld: "BLĐ",
+    "ban lanh dao": "BLĐ",
+    "kinh doanh": "Kinh Doanh",
+    "tinh hoa": "Tinh Hoa",
+    "ky tai": "Kỳ Tài",
+    "tien phong": "Tiên Phong",
+    "buc pha": "Bức Phá",
+    "but pha": "Bức Phá",
+    "khai pha": "Khai Phá",
+    "full time": "Full Time",
+    "part time": "Part Time",
+    ctv: "CTV",
+    tts: "TTS",
+    nvpt: "NVPT",
+    ontop: "ONTOP",
+    one: "O.N.E",
+    "o n e": "O.N.E"
+  };
+  if (special[key]) return special[key];
+  if (field === "employee_code") return raw.toUpperCase();
+  if (field === "bank" && /^[a-z0-9]{2,12}$/i.test(raw)) return raw.toUpperCase();
+  if (field === "branch" && /^[a-z0-9]{2,6}$/i.test(raw)) return raw.toUpperCase();
+  if (field === "team" && (/^[a-z0-9.]{2,6}$/i.test(raw) || raw === raw.toUpperCase())) return raw.toUpperCase();
+  if (field === "full_name" && raw === raw.toUpperCase()) return titleCase(raw);
+  return raw;
+}
+
 function validEmail(value: string | null) {
   return Boolean(value && /^\S+@\S+\.\S+$/.test(value));
 }
@@ -68,8 +119,8 @@ Deno.serve(async (req: Request) => {
   try { payload = await req.json(); }
   catch { return json({ message: "JSON body không hợp lệ." }, 400); }
 
-  const employeeCode = String(payload.employee_code || "").trim().toUpperCase();
-  const fullName = String(payload.full_name || "").trim();
+  const employeeCode = canonicalText(payload.employee_code, "employee_code") || "";
+  const fullName = canonicalText(payload.full_name, "full_name") || "";
   const workEmail = clean(payload.work_email)?.toLowerCase() || null;
   const personalEmail = clean(payload.personal_email)?.toLowerCase() || null;
   const email = validEmail(workEmail) ? workEmail : validEmail(personalEmail) ? personalEmail : null;
@@ -100,10 +151,10 @@ Deno.serve(async (req: Request) => {
     return created.id as string;
   }
 
-  const department = clean(payload.department);
-  const area = clean(payload.area);
-  const branch = clean(payload.branch);
-  const team = clean(payload.team);
+  const department = canonicalText(payload.department, "department");
+  const area = canonicalText(payload.area, "area");
+  const branch = canonicalText(payload.branch, "branch");
+  const team = canonicalText(payload.team, "team");
   let departmentId: string | null = null;
   let areaId: string | null = null;
   let branchId: string | null = null;
@@ -124,13 +175,14 @@ Deno.serve(async (req: Request) => {
     work_email: workEmail,
     personal_email: personalEmail,
     phone: clean(payload.phone),
+    nickname: canonicalText(payload.nickname, "nickname"),
     department,
     area,
     branch,
     team,
-    title: clean(payload.title),
-    employment_level: clean(payload.employment_level),
-    employment_type: clean(payload.employment_type),
+    title: canonicalText(payload.title, "title"),
+    employment_level: canonicalText(payload.employment_level, "level"),
+    employment_type: canonicalText(payload.employment_type, "type"),
     start_date: clean(payload.start_date),
     employment_status: "active",
     data_quality: email ? "ok" : "needs_review",
