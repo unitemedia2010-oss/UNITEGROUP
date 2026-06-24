@@ -59,6 +59,7 @@ const ROLE_LABELS = { SALE:"SALE", EMPLOYEE:"NHÂN VIÊN", TTS:"TTS", NVPT:"NVPT
 const adminAreaFilter = document.getElementById("adminAreaFilter");
 const adminBranchFilter = document.getElementById("adminBranchFilter");
 const adminTeamFilter = document.getElementById("adminTeamFilter");
+const adminEmployeeGroupFilter = document.getElementById("adminEmployeeGroupFilter");
 const adminScopeNote = document.getElementById("adminScopeNote");
 const profileManagerModal = document.getElementById("profileManagerModal");
 const profileSearchInput = document.getElementById("profileSearchInput");
@@ -68,6 +69,7 @@ const excelExportMonth = document.getElementById("excelExportMonth");
 const excelExportArea = document.getElementById("excelExportArea");
 const excelExportBranch = document.getElementById("excelExportBranch");
 const excelExportTeam = document.getElementById("excelExportTeam");
+const excelExportEmployeeGroup = document.getElementById("excelExportEmployeeGroup");
 const excelExportStatus = document.getElementById("excelExportStatus");
 const excelExportMessage = document.getElementById("excelExportMessage");
 const excelExportScopeNote = document.getElementById("excelExportScopeNote");
@@ -287,6 +289,21 @@ function configureAccountCreatorUI() {
   lock(teamInput, currentProfile?.team, role === "LEADER");
 }
 
+function employeeCodeGroup(code) {
+  const value = String(code || "").trim().toUpperCase();
+  if (!value) return "no_code";
+  if (/^TVU/.test(value)) return "probation";
+  if (/^U/.test(value)) return "official";
+  return "other";
+}
+
+const EMPLOYEE_GROUP_LABELS = {
+  official: "Chính thức (U)",
+  probation: "Thử việc (TVU)",
+  no_code: "Chưa có mã",
+  other: "Mã khác"
+};
+
 function normalizeScopeValue(value) {
   return String(value || "").trim().toLocaleLowerCase("vi");
 }
@@ -302,13 +319,15 @@ function getOperationalScope() {
     branch: String(currentProfile?.branch || "").trim(),
     team: String(currentProfile?.team || "").trim()
   };
-  if (isLeader()) return own;
-  if (isBranchManager()) return { area: own.area, branch: own.branch, team: String(adminTeamFilter?.value || "").trim() };
-  if (isAreaManager()) return { area: own.area, branch: String(adminBranchFilter?.value || "").trim(), team: String(adminTeamFilter?.value || "").trim() };
+  const employeeGroup = String(adminEmployeeGroupFilter?.value || "").trim();
+  if (isLeader()) return { ...own, employeeGroup };
+  if (isBranchManager()) return { area: own.area, branch: own.branch, team: String(adminTeamFilter?.value || "").trim(), employeeGroup };
+  if (isAreaManager()) return { area: own.area, branch: String(adminBranchFilter?.value || "").trim(), team: String(adminTeamFilter?.value || "").trim(), employeeGroup };
   return {
     area: String(adminAreaFilter?.value || "").trim(),
     branch: String(adminBranchFilter?.value || "").trim(),
-    team: String(adminTeamFilter?.value || "").trim()
+    team: String(adminTeamFilter?.value || "").trim(),
+    employeeGroup
   };
 }
 
@@ -317,6 +336,7 @@ function profileMatchesScope(profile, scope = getOperationalScope()) {
   if (scope.area && normalizeScopeValue(profile.area) !== normalizeScopeValue(scope.area)) return false;
   if (scope.branch && normalizeScopeValue(profile.branch) !== normalizeScopeValue(scope.branch)) return false;
   if (scope.team && normalizeScopeValue(profile.team) !== normalizeScopeValue(scope.team)) return false;
+  if (scope.employeeGroup && employeeCodeGroup(profile.employee_code) !== scope.employeeGroup) return false;
   return true;
 }
 
@@ -386,6 +406,7 @@ function updateAdminScopeNote() {
   if (scope.area) parts.push(`Khu vực ${scope.area}`);
   if (scope.branch) parts.push(`Chi nhánh ${scope.branch}`);
   if (scope.team) parts.push(`Team ${scope.team}`);
+  if (scope.employeeGroup) parts.push(`Nhóm ${EMPLOYEE_GROUP_LABELS[scope.employeeGroup] || scope.employeeGroup}`);
   adminScopeNote.textContent = parts.length ? `Phạm vi ${role}: ${parts.join(" • ")}.` : "Đang xem toàn bộ dữ liệu được phân quyền.";
 }
 
@@ -507,12 +528,20 @@ async function loadMetrics() {
   ]);
 
   const countScoped = rows => (rows || []).filter(row => allowedIds.has(row.employee_id)).length;
-  const employeeCount = getScopedProfiles().filter(profile => ["SALE","EMPLOYEE","TTS","NVPT"].includes(profile.role_type)).length;
+  const employeeProfiles = getScopedProfiles().filter(profile => ["SALE","EMPLOYEE","TTS","NVPT"].includes(profile.role_type));
+  const employeeCount = employeeProfiles.length;
+  const groupCounts = employeeProfiles.reduce((counts, profile) => {
+    const group = employeeCodeGroup(profile.employee_code);
+    counts[group] = (counts[group] || 0) + 1;
+    return counts;
+  }, { official: 0, probation: 0, no_code: 0, other: 0 });
 
   document.getElementById("pendingScheduleCount").textContent = countScoped(pendingScheduleRes.data);
   document.getElementById("approvedWeekCount").textContent = countScoped(approvedScheduleRes.data);
   document.getElementById("pendingLeaveCount").textContent = countScoped(pendingLeaveRes.data);
   document.getElementById("employeeCount").textContent = employeeCount;
+  const groupSummary = document.getElementById("employeeGroupSummary");
+  if (groupSummary) groupSummary.textContent = `U: ${groupCounts.official} • TVU: ${groupCounts.probation} • Chưa mã: ${groupCounts.no_code}${groupCounts.other ? ` • Khác: ${groupCounts.other}` : ""}`;
 }
 
 function renderProfileSettings(query = "") {
@@ -540,7 +569,7 @@ function renderProfileSettings(query = "") {
   }
 
   if (!filtered.length) {
-    profileSettingsTable.innerHTML = `<tr><td colspan="11" class="empty-row">Không tìm thấy tài khoản phù hợp.</td></tr>`;
+    profileSettingsTable.innerHTML = `<tr><td colspan="10" class="empty-row">Không tìm thấy tài khoản phù hợp.</td></tr>`;
     return;
   }
 
@@ -573,7 +602,7 @@ function renderProfileSettings(query = "") {
 async function loadProfileSettings() {
   if (!profileSettingsTable || !isSuperAdmin()) return;
 
-  profileSettingsTable.innerHTML = `<tr><td colspan="11" class="empty-row">Đang tải danh sách tài khoản...</td></tr>`;
+  profileSettingsTable.innerHTML = `<tr><td colspan="10" class="empty-row">Đang tải danh sách tài khoản...</td></tr>`;
   const { data, error } = await supabase
     .from("profiles")
     .select("id, employee_code, full_name, email, phone, role_type, department, area, branch, team, status, min_days_per_month")
@@ -887,13 +916,13 @@ async function loadPendingSchedules() {
 
   const tbody = document.getElementById("pendingScheduleTable");
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">${escapeHtml(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-row">${escapeHtml(error.message)}</td></tr>`;
     return;
   }
 
   const scopedData = (data || []).filter(row => profileMatchesScope(row.profiles));
   if (!scopedData.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">Không có yêu cầu chờ duyệt trong phạm vi đang chọn.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-row">Không có yêu cầu chờ duyệt trong phạm vi đang chọn.</td></tr>`;
     return;
   }
 
@@ -903,6 +932,7 @@ async function loadPendingSchedules() {
       <tr>
         <td><input type="checkbox" class="schedule-check" value="${row.id}" /></td>
         <td><b>${escapeHtml(displayProfileName(row.profiles))}</b><br><span class="muted">${escapeHtml(row.profiles?.employee_code || "")}</span></td>
+        <td>${escapeHtml(EMPLOYEE_GROUP_LABELS[employeeCodeGroup(row.profiles?.employee_code)] || "")}</td>
         <td>${escapeHtml(row.profiles?.role_type || "")}</td>
         <td>${escapeHtml(row.profiles?.area || "")}</td>
         <td>${escapeHtml(row.profiles?.team || "")}</td>
@@ -923,13 +953,13 @@ async function loadPendingLeaves() {
 
   const tbody = document.getElementById("pendingLeaveTable");
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty-row">${escapeHtml(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-row">${escapeHtml(error.message)}</td></tr>`;
     return;
   }
 
   const scopedData = (data || []).filter(row => profileMatchesScope(row.profiles));
   if (!scopedData.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty-row">Không có yêu cầu xin nghỉ chờ duyệt trong phạm vi đang chọn.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-row">Không có yêu cầu xin nghỉ chờ duyệt trong phạm vi đang chọn.</td></tr>`;
     return;
   }
 
@@ -937,6 +967,7 @@ async function loadPendingLeaves() {
     <tr>
       <td><input type="checkbox" class="leave-check" value="${row.id}" /></td>
       <td><b>${escapeHtml(displayProfileName(row.profiles))}</b><br><span class="muted">${escapeHtml(row.profiles?.employee_code || "")}</span></td>
+      <td>${escapeHtml(EMPLOYEE_GROUP_LABELS[employeeCodeGroup(row.profiles?.employee_code)] || "")}</td>
       <td>${escapeHtml(row.profiles?.area || "")}</td>
       <td>${escapeHtml(row.profiles?.team || "")}</td>
       <td>${formatDate(row.leave_date)}</td>
@@ -962,13 +993,13 @@ async function loadAllSchedules() {
 
   const tbody = document.getElementById("allScheduleTable");
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-row">${escapeHtml(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">${escapeHtml(error.message)}</td></tr>`;
     return;
   }
 
   allSchedules = (data || []).filter(row => profileMatchesScope(row.profiles));
   if (!allSchedules.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-row">Chưa có lịch trong tuần và phạm vi đang chọn.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">Chưa có lịch trong tuần và phạm vi đang chọn.</td></tr>`;
     return;
   }
 
@@ -977,6 +1008,7 @@ async function loadAllSchedules() {
     return `
       <tr>
         <td><b>${escapeHtml(displayProfileName(row.profiles))}</b><br><span class="muted">${escapeHtml(row.profiles?.employee_code || "")}</span></td>
+        <td>${escapeHtml(EMPLOYEE_GROUP_LABELS[employeeCodeGroup(row.profiles?.employee_code)] || "")}</td>
         <td>${escapeHtml(row.profiles?.role_type || "")}</td>
         <td>${escapeHtml(row.profiles?.area || "")}</td>
         <td>${escapeHtml(row.profiles?.team || "")}</td>
@@ -1291,13 +1323,15 @@ function getExcelExportScope() {
     branch: String(currentProfile?.branch || "").trim(),
     team: String(currentProfile?.team || "").trim()
   };
-  if (isLeader()) return own;
-  if (isBranchManager()) return { area: own.area, branch: own.branch, team: String(excelExportTeam?.value || "").trim() };
-  if (isAreaManager()) return { area: own.area, branch: String(excelExportBranch?.value || "").trim(), team: String(excelExportTeam?.value || "").trim() };
+  const employeeGroup = String(excelExportEmployeeGroup?.value || "").trim();
+  if (isLeader()) return { ...own, employeeGroup };
+  if (isBranchManager()) return { area: own.area, branch: own.branch, team: String(excelExportTeam?.value || "").trim(), employeeGroup };
+  if (isAreaManager()) return { area: own.area, branch: String(excelExportBranch?.value || "").trim(), team: String(excelExportTeam?.value || "").trim(), employeeGroup };
   return {
     area: String(excelExportArea?.value || "").trim(),
     branch: String(excelExportBranch?.value || "").trim(),
-    team: String(excelExportTeam?.value || "").trim()
+    team: String(excelExportTeam?.value || "").trim(),
+    employeeGroup
   };
 }
 
@@ -1342,7 +1376,7 @@ function rebuildExcelTeamOptions({ preserve = true } = {}) {
 
 function updateExcelScopeNote() {
   if (!excelExportScopeNote) return;
-  const { area, branch, team } = getExcelExportScope();
+  const { area, branch, team, employeeGroup } = getExcelExportScope();
   if (isLeader()) {
     excelExportScopeNote.textContent = area && branch && team
       ? `Leader chỉ xuất bảng chấm công của Khu vực ${area} • Chi nhánh ${branch} • Team ${team}.`
@@ -1361,7 +1395,7 @@ function updateExcelScopeNote() {
       : "Tài khoản chưa được cấu hình Khu vực.";
     return;
   }
-  const parts = [area ? `Khu vực ${area}` : "Tất cả khu vực", branch ? `Chi nhánh ${branch}` : "Tất cả chi nhánh", team ? `Team ${team}` : "Tất cả team"];
+  const parts = [area ? `Khu vực ${area}` : "Tất cả khu vực", branch ? `Chi nhánh ${branch}` : "Tất cả chi nhánh", team ? `Team ${team}` : "Tất cả team", employeeGroup ? `Nhóm ${EMPLOYEE_GROUP_LABELS[employeeGroup] || employeeGroup}` : "Tất cả nhóm nhân sự"];
   excelExportScopeNote.textContent = `Phạm vi xuất: ${parts.join(" • ")}.`;
 }
 
@@ -1675,7 +1709,7 @@ async function downloadMonthlyExcel() {
     return;
   }
 
-  const { area: selectedArea, branch: selectedBranch, team: selectedTeam } = getExcelExportScope();
+  const { area: selectedArea, branch: selectedBranch, team: selectedTeam, employeeGroup: selectedEmployeeGroup } = getExcelExportScope();
   if (isLeader() && (!selectedArea || !selectedBranch || !selectedTeam)) {
     showMessage(excelExportMessage, "Hồ sơ Leader chưa có đủ Khu vực, Chi nhánh và Team.", "err");
     return;
@@ -1707,7 +1741,8 @@ async function downloadMonthlyExcel() {
 
     const matches = profile => (!selectedArea || normalizeScopeValue(profile.area) === normalizeScopeValue(selectedArea))
       && (!selectedBranch || normalizeScopeValue(profile.branch) === normalizeScopeValue(selectedBranch))
-      && (!selectedTeam || normalizeScopeValue(profile.team) === normalizeScopeValue(selectedTeam));
+      && (!selectedTeam || normalizeScopeValue(profile.team) === normalizeScopeValue(selectedTeam))
+      && (!selectedEmployeeGroup || employeeCodeGroup(profile.employee_code) === selectedEmployeeGroup);
     const profiles = (profileRes.data || []).filter(matches);
     const allowedIds = new Set(profiles.map(profile => profile.id));
     const schedules = (scheduleRes.data || []).filter(row => allowedIds.has(row.employee_id));
@@ -1720,30 +1755,30 @@ async function downloadMonthlyExcel() {
       profiles, schedules, offs, leaves, busyRows, monthValue, selectedArea, selectedBranch, selectedTeam
     });
 
-    const scheduleRows = [["STT", "Mã NV", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày", "Thứ", "Ca làm", "Khung giờ", "Trạng thái", "Ghi chú"]];
+    const scheduleRows = [["STT", "Mã NV", "Nhóm nhân sự", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày", "Thứ", "Ca làm", "Khung giờ", "Trạng thái", "Ghi chú"]];
     schedules.forEach((row, index) => {
       const profile = profileMap.get(row.employee_id) || {};
       const meta = parseScheduleNote(row.note);
-      scheduleRows.push([index + 1, profile.employee_code || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.work_date, weekdayLabel(row.work_date), SHIFT_LABELS[row.shift] || row.shift, meta.timeText || "", STATUS_LABELS[row.status] || row.status, meta.cleanNote || ""]);
+      scheduleRows.push([index + 1, profile.employee_code || "", EMPLOYEE_GROUP_LABELS[employeeCodeGroup(profile.employee_code)] || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.work_date, weekdayLabel(row.work_date), SHIFT_LABELS[row.shift] || row.shift, meta.timeText || "", STATUS_LABELS[row.status] || row.status, meta.cleanNote || ""]);
     });
 
-    const offRows = [["STT", "Mã NV", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày OFF", "Thứ", "Ca", "Ghi chú"]];
+    const offRows = [["STT", "Mã NV", "Nhóm nhân sự", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày OFF", "Thứ", "Ca", "Ghi chú"]];
     offs.forEach((row, index) => {
       const profile = profileMap.get(row.employee_id) || {};
-      offRows.push([index + 1, profile.employee_code || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.unavailable_date, weekdayLabel(row.unavailable_date), SHIFT_LABELS[row.shift] || row.shift || "OFF", String(row.note || "").replace(OFF_SUBMITTED_MARKER, "").trim()]);
+      offRows.push([index + 1, profile.employee_code || "", EMPLOYEE_GROUP_LABELS[employeeCodeGroup(profile.employee_code)] || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.unavailable_date, weekdayLabel(row.unavailable_date), SHIFT_LABELS[row.shift] || row.shift || "OFF", String(row.note || "").replace(OFF_SUBMITTED_MARKER, "").trim()]);
     });
 
-    const busyExportRows = [["STT", "Mã NV", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày bận", "Thứ", "Ca bận", "Lý do/Ghi chú"]];
+    const busyExportRows = [["STT", "Mã NV", "Nhóm nhân sự", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày bận", "Thứ", "Ca bận", "Lý do/Ghi chú"]];
     busyRows.forEach((row, index) => {
       const profile = profileMap.get(row.employee_id) || {};
-      busyExportRows.push([index + 1, profile.employee_code || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.unavailable_date, weekdayLabel(row.unavailable_date), SHIFT_LABELS[row.shift] || row.shift || "Bận", String(row.note || "").trim()]);
+      busyExportRows.push([index + 1, profile.employee_code || "", EMPLOYEE_GROUP_LABELS[employeeCodeGroup(profile.employee_code)] || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.unavailable_date, weekdayLabel(row.unavailable_date), SHIFT_LABELS[row.shift] || row.shift || "Bận", String(row.note || "").trim()]);
     });
 
-    const leaveRows = [["STT", "Mã NV", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày nghỉ", "Thứ", "Hình thức", "Khung giờ", "Lý do", "Trạng thái", "Ghi chú"]];
+    const leaveRows = [["STT", "Mã NV", "Nhóm nhân sự", "Họ tên", "Vai trò", "Khu vực", "Chi nhánh", "Team", "Ngày nghỉ", "Thứ", "Hình thức", "Khung giờ", "Lý do", "Trạng thái", "Ghi chú"]];
     leaves.forEach((row, index) => {
       const profile = profileMap.get(row.employee_id) || {};
       const timeText = row.leave_start_time && row.leave_end_time ? `${String(row.leave_start_time).slice(0, 5)} - ${String(row.leave_end_time).slice(0, 5)}` : "";
-      leaveRows.push([index + 1, profile.employee_code || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.leave_date, weekdayLabel(row.leave_date), LEAVE_PERIOD_LABELS[row.leave_period] || row.leave_period || "Toàn bộ ca", timeText, REASON_LABELS[row.leave_type] || row.leave_type || "", STATUS_LABELS[row.status] || row.status, row.reason_note || ""]);
+      leaveRows.push([index + 1, profile.employee_code || "", EMPLOYEE_GROUP_LABELS[employeeCodeGroup(profile.employee_code)] || "", displayProfileName(profile), profile.role_type || "", profile.area || "", profile.branch || "", profile.team || "", row.leave_date, weekdayLabel(row.leave_date), LEAVE_PERIOD_LABELS[row.leave_period] || row.leave_period || "Toàn bộ ca", timeText, REASON_LABELS[row.leave_type] || row.leave_type || "", STATUS_LABELS[row.status] || row.status, row.reason_note || ""]);
     });
 
     const wb = window.XLSX.utils.book_new();
@@ -1787,10 +1822,11 @@ function exportCsv() {
     return;
   }
 
-  const headers = ["Mã NV","Họ tên","Loại","Khu vực","Team","Ngày","Ca","Trạng thái"];
+  const headers = ["Mã NV","Họ tên","Nhóm mã","Loại","Khu vực","Team","Ngày","Ca","Trạng thái"];
   const rows = allSchedules.map(row => [
     row.profiles?.employee_code || "",
     row.profiles?.full_name || "",
+    EMPLOYEE_GROUP_LABELS[employeeCodeGroup(row.profiles?.employee_code)] || "",
     row.profiles?.role_type || "",
     row.profiles?.area || "",
     row.profiles?.team || "",
@@ -1941,6 +1977,7 @@ downloadExcelBtn?.addEventListener("click", downloadMonthlyExcel);
 excelExportArea?.addEventListener("change", () => { rebuildExcelBranchOptions({ preserve: false }); rebuildExcelTeamOptions({ preserve: false }); updateExcelScopeNote(); });
 excelExportBranch?.addEventListener("change", () => { rebuildExcelTeamOptions({ preserve: false }); updateExcelScopeNote(); });
 excelExportTeam?.addEventListener("change", updateExcelScopeNote);
+excelExportEmployeeGroup?.addEventListener("change", updateExcelScopeNote);
 document.querySelectorAll("[data-close-excel-export]").forEach(el => el.addEventListener("click", closeExcelExportModal));
 adminAreaFilter?.addEventListener("change", async () => {
   rebuildAdminBranchFilter({ preserve: false });
@@ -1954,6 +1991,10 @@ adminBranchFilter?.addEventListener("change", async () => {
   await refreshOperationalData();
 });
 adminTeamFilter?.addEventListener("change", async () => {
+  updateAdminScopeNote();
+  await refreshOperationalData();
+});
+adminEmployeeGroupFilter?.addEventListener("change", async () => {
   updateAdminScopeNote();
   await refreshOperationalData();
 });

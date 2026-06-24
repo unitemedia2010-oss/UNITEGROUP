@@ -58,7 +58,6 @@ const calendarMessage = document.getElementById("calendarMessage");
 const registerModal = document.getElementById("registerModal");
 const registerModalTitle = document.getElementById("registerModalTitle");
 const registerModalMeta = document.getElementById("registerModalMeta");
-const registerEmployeeKind = document.getElementById("registerEmployeeKind");
 const registerNote = document.getElementById("registerNote");
 const registerMessage = document.getElementById("registerMessage");
 const registerBusyToggle = document.getElementById("registerBusyToggle");
@@ -98,6 +97,14 @@ const confirmNewPasswordInput = document.getElementById("confirmNewPasswordInput
 const changePasswordMessage = document.getElementById("changePasswordMessage");
 
 const myScheduleTable = document.getElementById("myScheduleTable");
+
+function employeeCodeGroup(code) {
+  const value = String(code || "").trim().toUpperCase();
+  if (!value) return "Chưa có mã";
+  if (/^TVU/.test(value)) return "Thử việc (TVU)";
+  if (/^U/.test(value)) return "Chính thức (U)";
+  return "Mã khác";
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -406,19 +413,6 @@ function isDateInActiveDraftWeek(dateIso) {
 function getSelectedRegisterShift() {
   const selected = document.querySelector('input[name="registerShift"]:checked');
   return selected?.value || "";
-}
-
-function employeeKindLabel(profile = currentProfile) {
-  const code = String(profile?.employee_code || "").trim().toUpperCase();
-  const role = String(profile?.role_type || "").trim().toUpperCase();
-  if (/^TTS/.test(code) || role === "TTS") return "TTS";
-  if (/^NVPT/.test(code) || role === "NVPT") return "NVPT";
-  if (/^CTV/.test(code)) return "CTV";
-  if (/^(SALE|SAL|S)[A-Z0-9_-]*/.test(code) || role === "SALE") return "Sale";
-  if (/^(LD|LEADER)/.test(code) || role === "LEADER") return "Leader";
-  if (/^(QL|BM|AM|TPKD|QLCN)/.test(code) || ["BRANCH_MANAGER", "AREA_MANAGER"].includes(role)) return "Quản lý";
-  if (/^U\d+/.test(code)) return "Khối văn phòng/BLĐ";
-  return role || "Nhân sự";
 }
 
 function clearRegisterChoice() {
@@ -1219,8 +1213,7 @@ function openRegisterModal(dateIso) {
 
   const draft = getDraftForDate(dateIso);
   registerModalTitle.textContent = `${draft ? "Sửa" : "Chọn"} lịch ngày ${formatDate(dateIso)}`;
-  registerModalMeta.textContent = `${formatActiveWeekRange()}. Lựa chọn chỉ nằm trong bản nháp tuần cho đến khi bạn bấm Nộp lịch tuần.`;
-  if (registerEmployeeKind) registerEmployeeKind.textContent = `Nhóm nhân sự: ${employeeKindLabel()}`;
+  registerModalMeta.textContent = `${formatActiveWeekRange()} • ${currentProfile?.employee_code || "Chưa có mã"} • ${employeeCodeGroup(currentProfile?.employee_code)}. Lựa chọn chỉ nằm trong bản nháp tuần cho đến khi bạn bấm Nộp lịch tuần.`;
 
   if (draft) {
     const input = document.querySelector(`input[name="registerShift"][value="${draft.shift}"]`);
@@ -1269,7 +1262,7 @@ function renderProfileHeader() {
 
   if (welcomeName) welcomeName.textContent = `Xin chào, ${displayName}`;
   if (profileLine) {
-    profileLine.textContent = `${currentProfile?.employee_code || "Chưa có mã"} • ${employeeKindLabel()} • ${currentProfile?.area || "Chưa có khu vực"} • ${currentProfile?.team || "Chưa có team"}`;
+    profileLine.textContent = `${currentProfile?.employee_code || "Chưa có mã"} • ${employeeCodeGroup(currentProfile?.employee_code)} • ${currentProfile?.role_type || ""} • ${currentProfile?.area || "Chưa có khu vực"} • ${currentProfile?.team || "Chưa có team"}`;
   }
   if (targetDaysEl) targetDaysEl.textContent = currentProfile?.min_days_per_month || 0;
 }
@@ -1700,7 +1693,7 @@ async function submitLeave() {
 
   if (error) {
     const migrationHint = /leave_period|leave_start_time|leave_end_time|column/i.test(error.message || "")
-      ? " Hãy chạy file supabase/migrations/002_weekly_flexible_leave.sql trong SQL Editor."
+      ? " Hãy chạy file supabase/01_fresh_database.sql trong SQL Editor."
       : "";
     showMessage(leaveMessage, `Lỗi xin nghỉ: ${error.message}.${migrationHint}`, "err");
     showToast(`Lỗi xin nghỉ: ${error.message}`, "err");

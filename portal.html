@@ -1,476 +1,501 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#741f2b" />
-  <title>Unite HR Portal</title>
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="stylesheet" href="./css/app.css?v=34" />
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="#741f2b" name="theme-color"/>
+<title>Unite HR Portal</title>
+<link href="./manifest.webmanifest" rel="manifest"/>
+<link href="./css/app.css?v=37" rel="stylesheet"/><link href="./css/v35.css?v=37" rel="stylesheet"/><link href="./css/v36.css?v=37" rel="stylesheet"/>
 </head>
 <body class="portal-page">
-  <div id="toastHost" class="toast-host" aria-live="polite"></div>
-
-  <div class="portal-shell">
-    <aside id="portalSidebar" class="portal-sidebar">
-      <div class="portal-brand">
-        <img class="portal-brand-logo" src="https://techbytruong.wordpress.com/wp-content/uploads/2026/01/unite-group-2.png" alt="UNITE GROUP" loading="lazy" />
-        <div><strong>HR Portal</strong><small>Workforce & Communication</small></div>
-      </div>
-
-      <div class="portal-user-card">
-        <div id="portalAvatar" class="portal-avatar">U</div>
-        <div><b id="portalUserName">Đang tải...</b><span id="portalUserScope">—</span></div>
-      </div>
-
-      <nav class="portal-nav" aria-label="Điều hướng chính">
-        <button class="portal-nav-item active" data-page="dashboard"><span>⌂</span>Tổng quan</button>
-        <button class="portal-nav-item" data-page="announcements"><span>✦</span>Thông báo <b id="navUnreadAnnouncements" class="nav-count hidden">0</b></button>
-        <button class="portal-nav-item" data-page="cases"><span>▣</span>Yêu cầu HR <b id="navOpenCases" class="nav-count hidden">0</b></button>
-        <button class="portal-nav-item" data-page="my-profile"><span>♙</span>Hồ sơ của tôi</button>
-        <button class="portal-nav-item manager-nav" data-page="employees"><span>◉</span>Nhân sự</button>
-        <button class="portal-nav-item manager-nav" data-page="organization"><span>⌘</span>Tổ chức</button>
-        <button class="portal-nav-item hr-only hidden" data-page="import"><span>⇧</span>Nhập dữ liệu Excel</button>
-        <button id="openScheduleBtn" class="portal-nav-item" data-page="schedule"><span>◫</span>Lịch làm & chấm công</button>
-      </nav>
-
-      <div class="portal-sidebar-bottom">
-        <button id="portalChangePasswordBtn" class="portal-mini-action" type="button">Đổi mật khẩu</button>
-        <button id="enableBrowserNotificationsBtn" class="portal-mini-action">Bật thông báo trình duyệt</button>
-        <button id="portalLogoutBtn" class="portal-mini-action danger-link">Đăng xuất</button>
-      </div>
-    </aside>
-
-    <main class="portal-main">
-      <header class="portal-topbar">
-        <button id="portalMenuBtn" class="portal-menu-btn" aria-label="Mở menu">☰</button>
-        <div>
-          <p id="portalBreadcrumb" class="eyebrow">Cổng thông tin nội bộ</p>
-          <h1 id="portalPageTitle">Tổng quan</h1>
-        </div>
-        <div class="portal-topbar-actions">
-          <button id="portalRefreshBtn" class="btn ghost">Làm mới</button>
-          <button id="portalInboxBtn" class="btn ghost icon-btn" aria-label="Thông báo">
-            <span>🔔</span><b id="portalInboxBadge" class="notif-badge hidden">0</b>
-          </button>
-        </div>
-      </header>
-
-      <div class="portal-content">
-        <section id="page-dashboard" class="portal-page-section active">
-          <div class="portal-welcome panel">
-            <div>
-              <p class="eyebrow">UNITE GROUP</p>
-              <h2 id="dashboardGreeting">Xin chào</h2>
-              <p class="muted">Một nơi để quản lý lịch làm, nhân sự, thông báo và các yêu cầu HR theo đúng tuyến quản lý.</p>
-            </div>
-            <div id="dashboardRolePill" class="portal-role-pill">—</div>
-          </div>
-
-          <div class="grid four portal-metrics">
-            <article class="panel metric portal-metric-card">
-              <span class="portal-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 6 3 9H3c0-3 3-2 3-9Z"/><path d="M10 21h4"/></svg></span>
-              <span class="portal-metric-label">Thông báo chưa đọc</span><b id="metricUnread">0</b>
-            </article>
-            <article class="panel metric portal-metric-card">
-              <span class="portal-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4h8l3 3v13H5V4h3Z"/><path d="M9 12h6M9 16h4"/></svg></span>
-              <span class="portal-metric-label">Yêu cầu đang xử lý</span><b id="metricCases">0</b>
-            </article>
-            <article class="panel metric portal-metric-card manager-card">
-              <span class="portal-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-              <span class="portal-metric-label">Nhân sự đang làm</span><b id="metricEmployees">0</b>
-            </article>
-            <article class="panel metric portal-metric-card manager-card">
-              <span class="portal-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="m9 16 2 2 4-4"/></svg></span>
-              <span class="portal-metric-label">Lịch chờ duyệt</span><b id="metricSchedules">0</b>
-            </article>
-          </div>
-
-          <div class="dashboard-analytics manager-card">
-            <section class="panel dashboard-chart-card">
-              <div class="section-head compact-head"><div><p class="eyebrow">Nhân sự</p><h2>Tình hình nhân sự</h2></div><span id="dashboardEmployeeTotal" class="overview-chip">Tổng 0</span></div>
-              <div class="dashboard-donut-layout">
-                <div id="employeeStatusDonut" class="dashboard-donut"><div><b>0</b><span>Nhân sự</span></div></div>
-                <div class="dashboard-legend-list">
-                  <div><i class="legend-dot active"></i><span>Đang làm</span><b id="dashboardActiveEmployees">0</b></div>
-                  <div><i class="legend-dot reserved"></i><span>Bảo lưu</span><b id="dashboardReservedEmployees">0</b></div>
-                  <div><i class="legend-dot resigned"></i><span>Đã nghỉ</span><b id="dashboardResignedEmployees">0</b></div>
-                </div>
-              </div>
-            </section>
-            <section class="panel dashboard-chart-card">
-              <div class="section-head compact-head"><div><p class="eyebrow">Hôm nay</p><h2>Làm việc & nghỉ</h2></div><span id="dashboardTodayLabel" class="overview-chip">Hôm nay</span></div>
-              <div class="dashboard-bar-list">
-                <div class="dashboard-bar-item"><div><span>Có lịch làm</span><b id="dashboardWorkingToday">0</b></div><div class="dashboard-bar-track"><i id="dashboardWorkingBar"></i></div></div>
-                <div class="dashboard-bar-item"><div><span>Đang nghỉ phép</span><b id="dashboardLeaveToday">0</b></div><div class="dashboard-bar-track"><i id="dashboardLeaveBar"></i></div></div>
-                <div class="dashboard-bar-item"><div><span>Lịch bận / học</span><b id="dashboardBusyToday">0</b></div><div class="dashboard-bar-track"><i id="dashboardBusyBar"></i></div></div>
-              </div>
-            </section>
-            <section class="panel dashboard-chart-card">
-              <div class="section-head compact-head"><div><p class="eyebrow">Tuần hiện tại</p><h2>Tiến độ đăng ký lịch</h2></div><button class="btn ghost compact-btn" data-goto="schedule">Mở lịch</button></div>
-              <div class="registration-progress"><div class="registration-number"><b id="dashboardRegisteredWeek">0</b><span>đã đăng ký</span></div><div class="registration-number muted-number"><b id="dashboardMissingWeek">0</b><span>chưa đăng ký</span></div></div>
-              <div class="dashboard-bar-track large"><i id="dashboardRegistrationBar"></i></div>
-              <p id="dashboardRegistrationText" class="muted dashboard-note">Đang tính dữ liệu tuần...</p>
-            </section>
-          </div>
-
-          <div class="portal-dashboard-grid">
-            <section class="panel">
-              <div class="section-head"><div><p class="eyebrow">Cần chú ý</p><h2>Thông báo mới</h2></div><button class="btn ghost" data-goto="announcements">Xem tất cả</button></div>
-              <div id="dashboardAnnouncements" class="portal-feed"><div class="empty-row">Đang tải...</div></div>
-            </section>
-            <section class="panel">
-              <div class="section-head"><div><p class="eyebrow">Công việc</p><h2>Yêu cầu gần đây</h2></div><button class="btn ghost" data-goto="cases">Mở trung tâm</button></div>
-              <div id="dashboardCases" class="portal-feed"><div class="empty-row">Đang tải...</div></div>
-            </section>
-          </div>
-        </section>
-
-        <section id="page-announcements" class="portal-page-section">
-          <div class="section-head portal-section-head">
-            <div><p class="eyebrow">Thông tin chính thức</p><h2>Trung tâm thông báo</h2><p class="muted">Thông báo quan trọng có thể yêu cầu xác nhận đã đọc.</p></div>
-            <button id="createAnnouncementBtn" class="btn primary hr-only hidden">Tạo thông báo</button>
-          </div>
-          <div class="portal-filterbar panel">
-            <label>Tìm kiếm <input id="announcementSearch" type="search" placeholder="Tiêu đề hoặc nội dung..." /></label>
-            <label>Mức độ <select id="announcementPriorityFilter"><option value="">Tất cả</option><option value="urgent">Khẩn</option><option value="important">Quan trọng</option><option value="normal">Thông tin</option></select></label>
-            <label>Trạng thái <select id="announcementReadFilter"><option value="">Tất cả</option><option value="unread">Chưa đọc</option><option value="ack">Đã xác nhận</option></select></label>
-          </div>
-          <div id="announcementList" class="announcement-list"><div class="empty-row">Đang tải...</div></div>
-        </section>
-
-        <section id="page-cases" class="portal-page-section">
-          <div class="section-head portal-section-head">
-            <div><p class="eyebrow">Tương tác HR</p><h2>Trung tâm yêu cầu & báo cáo</h2><p class="muted">Mỗi nội dung có mã hồ sơ, trạng thái, người phụ trách và lịch sử trao đổi.</p></div>
-            <button id="createCaseBtn" class="btn primary">Gửi yêu cầu mới</button>
-          </div>
-          <div class="portal-filterbar panel">
-            <label>Tìm kiếm <input id="caseSearch" type="search" placeholder="Mã hồ sơ, tiêu đề, người gửi..." /></label>
-            <label>Trạng thái <select id="caseStatusFilter"><option value="">Tất cả</option><option value="submitted">Mới gửi</option><option value="in_review">Đang xử lý</option><option value="need_info">Cần bổ sung</option><option value="approved">Đã duyệt</option><option value="rejected">Từ chối</option><option value="closed">Đã đóng</option></select></label>
-            <label>Mức độ <select id="casePriorityFilter"><option value="">Tất cả</option><option value="urgent">Khẩn</option><option value="high">Cao</option><option value="normal">Bình thường</option><option value="low">Thấp</option></select></label>
-            <label class="manager-filter">Khu vực <select id="caseAreaFilter"><option value="">Tất cả</option></select></label>
-          </div>
-          <div id="caseBoard" class="case-board"><div class="empty-row">Đang tải...</div></div>
-        </section>
-
-
-        <section id="page-my-profile" class="portal-page-section">
-          <div class="section-head portal-section-head"><div><p class="eyebrow">Thông tin cá nhân</p><h2>Hồ sơ của tôi</h2><p class="muted">Kiểm tra thông tin đang lưu trên hệ thống. Nếu có sai sót, hãy gửi yêu cầu chỉnh sửa đến HR.</p></div><button id="openMyEmployeeDetailBtn" class="btn primary" disabled>Xem & báo chỉnh sửa</button></div>
-          <div id="myProfileContent" class="panel"><div class="empty-row">Đang tải hồ sơ...</div></div>
-        </section>
-
-        <section id="page-employees" class="portal-page-section manager-page">
-          <div class="section-head portal-section-head">
-            <div><p class="eyebrow">Hồ sơ nhân sự</p><h2>Danh sách nhân sự</h2><p class="muted">Tìm kiếm, lọc, chỉnh sửa và quản lý tài khoản theo đúng phạm vi phân quyền.</p></div>
-            <div class="actions">
-              <button id="addEmployeeBtn" class="btn primary hr-only hidden">+ Thêm nhân sự</button>
-              <button id="bulkCreateAccountsBtn" class="btn secondary hr-only hidden">Tạo tài khoản hàng loạt</button>
-              <button id="linkProfilesBtn" class="btn ghost hr-only hidden">Liên kết tài khoản theo email</button>
-            </div>
-          </div>
-          <section class="panel smart-filter-panel">
-            <div><p class="eyebrow">Lọc thông minh</p><h3>Tìm nhân sự bằng câu lệnh tiếng Việt</h3><p class="muted">Ví dụ: “nhân sự đang làm ở Kỳ Tài, team Bros, full time”.</p></div>
-            <div class="smart-filter-actions"><input id="employeeSmartFilter" type="search" placeholder="Nhập yêu cầu lọc tự nhiên..." /><button id="applyEmployeeSmartFilterBtn" class="btn primary">Lọc thông minh</button><button id="clearEmployeeFiltersBtn" class="btn ghost">Xóa bộ lọc</button></div>
-            <div id="employeeSmartFilterChips" class="smart-filter-chips"></div>
-          </section>
-          <div class="portal-filterbar panel employee-filterbar">
-            <label>Tìm kiếm <input id="employeeSearch" type="search" placeholder="Mã, tên, Nick Name, email, SĐT, ngân hàng..." /></label>
-            <label>Trạng thái <select id="employeeStatusFilter"><option value="">Tất cả</option><option value="active">Đang làm</option><option value="reserved">Bảo lưu</option><option value="resigned">Đã nghỉ</option><option value="unknown">Chưa rõ</option></select></label>
-            <label>Nhóm nhân sự <select id="employeeCodeGroupFilter"><option value="">Tất cả nhóm</option></select></label>
-            <label>Phòng ban <select id="employeeDepartmentFilter"><option value="">Tất cả</option></select></label>
-            <label>Khu vực <select id="employeeAreaFilter"><option value="">Tất cả</option></select></label>
-            <label>Chi nhánh <select id="employeeBranchFilter"><option value="">Tất cả</option></select></label>
-            <label>Team <select id="employeeTeamFilter"><option value="">Tất cả</option></select></label>
-            <label>Chức danh <select id="employeeTitleFilter"><option value="">Tất cả</option></select></label>
-            <label>Cấp bậc <select id="employeeLevelFilter"><option value="">Tất cả</option></select></label>
-            <label>Loại công việc <select id="employeeTypeFilter"><option value="">Tất cả</option></select></label>
-            <label class="hr-only hidden">Ngân hàng <select id="employeeBankFilter"><option value="">Tất cả ngân hàng</option></select></label>
-            <label>Chất lượng dữ liệu <select id="employeeQualityFilter"><option value="">Tất cả</option><option value="ok">Đầy đủ</option><option value="needs_review">Cần rà soát</option><option value="invalid">Không hợp lệ</option></select></label>
-            <label>Sắp xếp <select id="employeeSortSelect"><option value="organization">Theo tổ chức</option><option value="name_asc">Tên A → Z</option><option value="name_desc">Tên Z → A</option><option value="start_desc">Ngày vào mới nhất</option><option value="code_asc">Mã nhân sự</option></select></label>
-            <label>Nhóm hiển thị <select id="employeeGroupSelect"><option value="department" selected>Theo phòng ban</option><option value="hierarchy_label">Theo cấp quản lý</option><option value="area">Theo khu vực</option><option value="branch">Theo chi nhánh</option><option value="team">Theo Team</option><option value="none">Không nhóm</option></select></label>
-          </div>
-          <div id="employeeColumnToolbar" class="employee-column-toolbar panel hr-only hidden">
-            <div><b>Cột hiển thị</b><span>Chọn nhanh các cột cần xem hoặc xuất file.</span></div>
-            <div id="employeeColumnButtons" class="employee-column-buttons"></div>
-          </div>
-          <div class="employee-table-summary">
-            <div><b id="employeeResultCount">0 nhân sự</b><span>Bộ lọc chỉ thay đổi cách xem, không làm đổi dữ liệu Supabase.</span></div>
-            <button id="exportFilteredEmployeesBtn" class="btn secondary hr-only hidden" type="button">Xuất file đã lọc</button>
-          </div>
-          <div class="panel table-wrap portal-table-wrap employee-data-grid">
-            <table><thead id="employeeTableHead"><tr><th>Mã</th><th>Họ tên</th><th>Nick Name</th><th>Nhóm</th><th>Phòng ban</th><th>Khu vực</th><th>Chi nhánh</th><th>Team</th><th>Chức danh</th><th>Cấp bậc</th><th>Loại</th><th>Ngân hàng</th><th>Trạng thái</th><th></th></tr></thead><tbody id="employeeTable"></tbody></table>
-          </div>
-          <div id="employeePagination" class="portal-pagination"></div>
-        </section>
-
-        <section id="page-organization" class="portal-page-section manager-page">
-          <div class="section-head portal-section-head"><div><p class="eyebrow">Cây tổ chức tương tác</p><h2>Khu vực → Chi nhánh → Team</h2><p class="muted">Nhấp vào khu vực, chi nhánh hoặc Team để xem chỉ số và danh sách thành viên.</p></div></div>
-          <div class="org-color-legend">
-            <span style="--cluster-color:#ef3340">Tinh Hoa</span><span style="--cluster-color:#f4c430">Kỳ Tài</span><span style="--cluster-color:#1976d2">Tiên Phong</span><span style="--cluster-color:#2e9b52">Bức Phá</span><span style="--cluster-color:#741f2b">Khai Phá</span>
-          </div>
-          <div id="organizationTree" class="org-tree"><div class="empty-row">Đang tải...</div></div>
-        </section>
-
-        <section id="page-schedule" class="portal-page-section">
-          <div class="section-head portal-section-head"><div><p class="eyebrow">Lịch làm & chấm công</p><h2>Quản lý lịch trong Cổng HR</h2><p class="muted">Toàn bộ lịch làm được mở trực tiếp trong cùng giao diện, không chuyển sang trang khác.</p></div><button id="reloadScheduleFrameBtn" class="btn ghost">Tải lại lịch</button></div>
-          <div class="panel schedule-embed-panel"><iframe id="scheduleFrame" title="Lịch làm & chấm công" loading="lazy"></iframe></div>
-        </section>
-
-        <section id="page-import" class="portal-page-section hr-only-page">
-          <div class="section-head portal-section-head">
-            <div><p class="eyebrow">Dữ liệu HR</p><h2>Nhập file quản lý nhân sự</h2><p class="muted">Đã cấu hình sẵn theo file “Quản lý thông tin nhân sự” bạn gửi. Dữ liệu nhạy cảm chỉ đi vào Supabase, không đưa lên GitHub.</p></div>
-          </div>
-          <div class="portal-import-grid">
-            <section class="panel">
-              <h3>1. Chọn file Excel / CSV</h3>
-              <label class="file-drop" for="hrImportFile"><span>Chọn hoặc kéo file .xlsx, .xls, .csv vào đây</span><small>Tối đa 25 MB. Excel ưu tiên sheet “Danh sách nhân viên”; CSV sẽ tự nhận dòng tiêu đề.</small></label>
-              <input id="hrImportFile" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden />
-              <p id="hrImportFileName" class="muted">Chưa chọn file.</p>
-              <button id="analyzeImportBtn" class="btn secondary" disabled>Phân tích dữ liệu</button>
-            </section>
-            <section class="panel">
-              <h3>2. Kết quả kiểm tra</h3>
-              <div id="importSummary" class="import-summary"><div class="empty-row">Chưa có dữ liệu.</div></div>
-              <div class="actions"><button id="commitImportBtn" class="btn primary" disabled>Đồng bộ các dòng thay đổi</button><button id="syncSheetNowBtn" class="btn secondary" type="button">Đồng bộ Supabase → Sheet</button></div>
-              <p id="importMessage" class="message"></p>
-            </section>
-          </div>
-          <section class="panel">
-            <div class="section-head"><div><p class="eyebrow">So sánh trước khi đồng bộ</p><h2>Danh sách thay đổi</h2><p class="muted">Dòng mới, có thay đổi hoặc cần rà soát đều được chọn sẵn để không sót nhân sự.</p></div><div class="actions"><select id="importDiffFilter"><option value="all">Tất cả</option><option value="new">Nhân sự mới</option><option value="changed">Có thay đổi</option><option value="unchanged">Không thay đổi</option><option value="review">Cần rà soát</option></select><button id="selectChangedImportBtn" class="btn ghost">Chọn dòng cần đồng bộ</button></div></div>
-            <div class="table-wrap import-diff-wrap"><table><thead><tr><th><input id="toggleImportSelection" type="checkbox" /></th><th>Dòng</th><th>Mã NV</th><th>Họ tên</th><th>Trạng thái</th><th>Trường thay đổi</th><th>Cảnh báo</th></tr></thead><tbody id="importDiffTable"><tr><td colspan="7" class="empty-row">Chưa phân tích file.</td></tr></tbody></table></div>
-          </section>
-        </section>
-      </div>
-    </main>
-  </div>
-
-  <div id="announcementModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-announcement></div>
-    <div class="uws-modal-card portal-form-modal">
-      <div class="modal-head"><div><p class="eyebrow">HR / ADMIN</p><h2>Tạo thông báo</h2></div><button class="modal-close" data-close-announcement>×</button></div>
-      <div class="form-stack">
-        <label>Tiêu đề <input id="announcementTitle" maxlength="180" /></label>
-        <label>Nội dung <textarea id="announcementBody" rows="7"></textarea></label>
-        <div class="form-grid">
-          <label>Mức độ <select id="announcementPriority"><option value="normal">Thông tin</option><option value="important">Quan trọng</option><option value="urgent">Khẩn</option></select></label>
-          <label>Đối tượng <select id="announcementTargetType"><option value="all">Toàn công ty</option><option value="role">Theo vai trò</option><option value="department">Theo phòng ban</option><option value="area">Theo khu vực</option><option value="branch">Theo chi nhánh</option><option value="team">Theo team</option><option value="user">Một tài khoản</option></select></label>
-          <label id="announcementTargetValueWrap" class="hidden">Đối tượng cụ thể
-            <input id="announcementTargetValue" list="announcementTargetOptions" placeholder="Chọn hoặc nhập chính xác" />
-            <datalist id="announcementTargetOptions"></datalist>
-            <small id="announcementTargetHint" class="muted">Chọn từ danh sách gợi ý.</small>
-          </label>
-          <label>Hết hiệu lực <input id="announcementExpiresAt" type="datetime-local" /></label>
-        </div>
-        <label class="inline-check"><input id="announcementRequiresAck" type="checkbox" /> Yêu cầu người nhận bấm “Tôi đã đọc”</label>
-        <div class="actions"><button id="publishAnnouncementBtn" class="btn primary">Phát thông báo</button><button class="btn ghost" data-close-announcement>Hủy</button></div>
-        <p id="announcementFormMessage" class="message"></p>
-      </div>
-    </div>
-  </div>
-
-  <div id="caseCreateModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-case-create></div>
-    <div class="uws-modal-card portal-form-modal">
-      <div class="modal-head"><div><p class="eyebrow">Gửi về HR</p><h2>Tạo yêu cầu / báo cáo</h2></div><button class="modal-close" data-close-case-create>×</button></div>
-      <div class="form-stack">
-        <div class="form-grid">
-          <label>Loại nội dung <select id="caseType"><option value="hr_support">Yêu cầu HR hỗ trợ</option><option value="attendance">Chấm công / lịch làm</option><option value="profile_update">Bổ sung hồ sơ</option><option value="document">Nộp giấy tờ</option><option value="suggestion">Ý kiến / kiến nghị</option><option value="incident">Báo cáo sự việc</option><option value="complaint">Khiếu nại / phản hồi</option><option value="other">Khác</option></select></label>
-          <label>Mức độ <select id="casePriority"><option value="normal">Bình thường</option><option value="high">Cao</option><option value="urgent">Khẩn</option><option value="low">Thấp</option></select></label>
-          <label>Quyền riêng tư <select id="caseVisibility"><option value="management">Theo tuyến quản lý + HR</option><option value="hr_private">Chỉ HR/Admin</option></select></label>
-        </div>
-        <label>Tiêu đề <input id="caseTitle" maxlength="180" /></label>
-        <label>Nội dung chi tiết <textarea id="caseDescription" rows="7"></textarea></label>
-        <label>Đính kèm ảnh/PDF/DOCX/Excel <input id="caseFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xlsx" /></label>
-        <div class="actions"><button id="submitCaseBtn" class="btn primary">Gửi yêu cầu</button><button class="btn ghost" data-close-case-create>Hủy</button></div>
-        <p id="caseCreateMessage" class="message"></p>
-      </div>
-    </div>
-  </div>
-
-  <div id="caseDetailModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-case-detail></div>
-    <div class="uws-modal-card case-detail-card">
-      <div class="modal-head"><div><p id="caseDetailCode" class="eyebrow">Hồ sơ</p><h2 id="caseDetailTitle">Chi tiết yêu cầu</h2></div><button class="modal-close" data-close-case-detail>×</button></div>
-      <div id="caseDetailMeta" class="case-detail-meta"></div>
-      <div id="caseDetailDescription" class="case-description"></div>
-      <div id="caseAttachmentList" class="attachment-list"></div>
-      <div id="caseMessageList" class="case-message-list"></div>
-      <div class="case-reply-box">
-        <textarea id="caseReplyBody" placeholder="Nhập phản hồi hoặc yêu cầu bổ sung..."></textarea>
-        <label class="case-reply-files">Đính kèm thêm <input id="caseReplyFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xlsx" /></label>
-        <div class="actions">
-          <button id="sendCaseReplyBtn" class="btn primary">Gửi phản hồi</button>
-          <select id="caseStatusUpdate" class="hr-only-control hidden"><option value="">Cập nhật trạng thái...</option><option value="in_review">Đang xử lý</option><option value="need_info">Cần bổ sung</option><option value="approved">Đã duyệt</option><option value="rejected">Từ chối</option><option value="closed">Đóng hồ sơ</option></select>
-        </div>
-        <div class="case-assignment-panel hr-only-control hidden">
-          <label>Người phụ trách <select id="caseAssigneeUpdate"><option value="">Chưa phân công</option></select></label>
-          <label>Hạn xử lý <input id="caseDueAtUpdate" type="datetime-local" /></label>
-          <button id="saveCaseAssignmentBtn" class="btn secondary" type="button">Lưu phân công</button>
-        </div>
-        <p id="caseDetailMessage" class="message"></p>
-      </div>
-    </div>
-  </div>
-
-  <div id="employeeDetailModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-employee-detail></div>
-    <div class="uws-modal-card employee-detail-card">
-      <div class="modal-head"><div><p class="eyebrow">Hồ sơ nhân sự</p><h2 id="employeeDetailName">Nhân sự</h2></div><button class="modal-close" data-close-employee-detail>×</button></div>
-      <div id="employeeDetailContent"></div>
-      <div class="employee-detail-actions">
-        <button id="editEmployeeBtn" class="btn primary hidden" type="button">Chỉnh sửa hồ sơ</button>
-        <button id="saveEmployeeBtn" class="btn primary hidden" type="button">Lưu thay đổi</button>
-        <button id="cancelEmployeeEditBtn" class="btn ghost hidden" type="button">Hủy chỉnh sửa</button>
-        <button id="reportEmployeeCorrectionBtn" class="btn secondary" type="button">Báo thông tin sai</button>
-      </div>
-      <p id="employeeDetailMessage" class="message"></p>
-    </div>
-  </div>
-
-  <div id="employeeCorrectionModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-employee-correction></div>
-    <div class="uws-modal-card portal-form-modal">
-      <div class="modal-head"><div><p class="eyebrow">Yêu cầu chỉnh sửa</p><h2>Báo thông tin nhân sự chưa đúng</h2></div><button class="modal-close" data-close-employee-correction>×</button></div>
-      <div class="form-stack">
-        <label>Thông tin cần sửa <textarea id="employeeCorrectionNote" rows="6" placeholder="Ví dụ: Team hiện tại là Bros, số điện thoại đúng là..."></textarea></label>
-        <label>Giá trị đề xuất (không bắt buộc) <textarea id="employeeCorrectionProposal" rows="4" placeholder="Có thể ghi theo dạng: Điện thoại: ...; Team: ..."></textarea></label>
-        <div class="actions"><button id="submitEmployeeCorrectionBtn" class="btn primary">Gửi về HR</button><button class="btn ghost" data-close-employee-correction>Hủy</button></div>
-        <p id="employeeCorrectionMessage" class="message"></p>
-      </div>
-    </div>
-  </div>
-
-  <div id="addEmployeeModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-add-employee></div>
-    <div class="uws-modal-card portal-form-modal add-employee-modal-card">
-      <div class="modal-head"><div><p class="eyebrow">HR / ADMIN</p><h2>Thêm nhân sự mới</h2><p class="muted">Có email hợp lệ sẽ mặc định tạo tài khoản đăng nhập với mật khẩu tạm và buộc đổi ở lần đầu.</p></div><button class="modal-close" data-close-add-employee>×</button></div>
-      <div class="form-grid add-employee-grid">
-        <label>Mã nhân sự <input id="newEmployeeCode" /></label><label>Họ tên <input id="newEmployeeName" /></label>
-        <label>Nick Name <input id="newEmployeeNickname" /></label>
-        <label>Email công việc <input id="newEmployeeWorkEmail" type="email" /></label><label>Email cá nhân <input id="newEmployeePersonalEmail" type="email" /></label>
-        <label>Điện thoại <input id="newEmployeePhone" /></label><label>Phòng ban <input id="newEmployeeDepartment" /></label>
-        <label>Khu vực <input id="newEmployeeArea" /></label><label>Chi nhánh <input id="newEmployeeBranch" /></label>
-        <label>Team <input id="newEmployeeTeam" /></label><label>Chức danh <input id="newEmployeeTitle" /></label>
-        <label>Cấp bậc <input id="newEmployeeLevel" /></label><label>Loại công việc <select id="newEmployeeType"><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="TTS">TTS</option><option value="CTV">CTV</option></select></label>
-        <label>Ngày bắt đầu <input id="newEmployeeStartDate" type="date" /></label><label>Vai trò tài khoản <select id="newEmployeeRole"><option value="SALE">SALE</option><option value="EMPLOYEE">NHÂN VIÊN</option><option value="TTS">TTS</option><option value="NVPT">NVPT</option><option value="LEADER">LEADER</option><option value="BRANCH_MANAGER">QUẢN LÝ CHI NHÁNH</option><option value="AREA_MANAGER">QUẢN LÝ KHU VỰC</option><option value="HR">HR</option></select></label>
-      </div>
-      <label class="inline-check"><input id="newEmployeeCreateAccount" type="checkbox" checked /> Tự tạo tài khoản khi có email</label>
-      <div class="temporary-password-note">Mật khẩu tạm mặc định: <b>12345678</b>. Người dùng buộc đổi mật khẩu ngay lần đăng nhập đầu tiên.</div>
-      <div class="actions"><button id="createEmployeeBtn" class="btn primary">Tạo nhân sự</button><button class="btn ghost" data-close-add-employee>Hủy</button></div>
-      <p id="addEmployeeMessage" class="message"></p>
-    </div>
-  </div>
-
-  <div id="bulkAccountModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-bulk-account></div>
-    <div class="uws-modal-card bulk-account-modal-card">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">HR / ADMIN</p>
-          <h2>Tạo tài khoản hàng loạt</h2>
-          <p class="muted">Chỉ tạo cho nhân sự đang làm, có mã và email hợp lệ, chưa có tài khoản. Mật khẩu tạm mặc định là <b>12345678</b> và bắt buộc đổi ở lần đăng nhập đầu tiên.</p>
-        </div>
-        <button class="modal-close" data-close-bulk-account>×</button>
-      </div>
-
-      <div id="bulkAccountSummary" class="bulk-account-summary">
-        <article><span>Tổng hồ sơ</span><b id="bulkTotalCount">0</b></article>
-        <article><span>Đủ điều kiện</span><b id="bulkEligibleCount">0</b></article>
-        <article><span>Đã có tài khoản</span><b id="bulkExistingCount">0</b></article>
-        <article><span>Cần rà soát</span><b id="bulkReviewCount">0</b></article>
-      </div>
-
-      <div class="bulk-account-toolbar">
-        <label>Tìm kiếm <input id="bulkAccountSearch" type="search" placeholder="Mã, tên, email..." /></label>
-        <label>Trạng thái
+<div aria-live="polite" class="toast-host" id="toastHost"></div>
+<div class="portal-shell">
+<aside class="portal-sidebar" id="portalSidebar">
+<div class="portal-brand">
+<div class="brand-badge"><img alt="Unite Group" class="brand-logo" src="./icons/unite-gold-transparent.png"/><span>UNITE</span></div>
+<div><strong>HR Portal</strong><small>Workforce &amp; Communication</small></div>
+</div>
+<div class="portal-user-card">
+<div class="portal-avatar" id="portalAvatar">U</div>
+<div><b id="portalUserName">Đang tải...</b><span id="portalUserScope">—</span></div>
+</div>
+<nav aria-label="Điều hướng chính" class="portal-nav">
+<button class="portal-nav-item active" data-page="dashboard"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5.5 10.5V20h13v-9.5"></path><path d="M9.5 20v-6h5v6"></path></svg></span>Tổng quan</button>
+<button class="portal-nav-item" data-page="announcements"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span>Thông báo <b class="nav-count hidden" id="navUnreadAnnouncements">0</b></button>
+<button class="portal-nav-item" data-page="cases"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><rect height="18" rx="2" width="16" x="4" y="3"></rect><path d="M8 8h8M8 12h8M8 16h5"></path></svg></span>Yêu cầu HR <b class="nav-count hidden" id="navOpenCases">0</b></button>
+<button class="portal-nav-item" data-page="my-profile"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></span>Hồ sơ của tôi</button>
+<button class="portal-nav-item manager-nav" data-page="employees"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>Nhân sự</button>
+<button class="portal-nav-item manager-nav" data-page="organization"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><rect height="5" rx="1" width="6" x="9" y="3"></rect><rect height="5" rx="1" width="6" x="3" y="16"></rect><rect height="5" rx="1" width="6" x="15" y="16"></rect><path d="M12 8v4M6 16v-4h12v4"></path></svg></span>Tổ chức</button>
+<button class="portal-nav-item hr-only hidden" data-page="import"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M4 14v6h16v-6"></path></svg></span>Nhập dữ liệu Excel</button>
+<button class="portal-nav-item" data-page="schedule" id="openScheduleBtn"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><rect height="16" rx="2" width="18" x="3" y="5"></rect><path d="M8 3v4M16 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg></span>Lịch làm &amp; chấm công</button>
+</nav>
+<div class="portal-sidebar-bottom"><button class="portal-mini-action" id="portalChangePasswordBtn" type="button"><span class="mini-action-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><rect height="11" rx="2" width="14" x="5" y="10"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2"></path></svg></span><span>Đổi mật khẩu</span></button>
+<button class="portal-mini-action" id="enableBrowserNotificationsBtn">Bật thông báo trình duyệt</button>
+<button class="portal-mini-action danger-link" id="portalLogoutBtn">Đăng xuất</button>
+</div>
+</aside>
+<main class="portal-main">
+<header class="portal-topbar">
+<button aria-label="Mở menu" aria-expanded="false" class="portal-menu-btn" id="portalMenuBtn" type="button"><span aria-hidden="true" class="menu-bars"><i></i><i></i><i></i></span></button>
+<div class="portal-topbar-copy">
+<p class="eyebrow" id="portalBreadcrumb">Cổng thông tin nội bộ</p>
+<h1 id="portalPageTitle">Tổng quan</h1>
+</div>
+<div class="portal-topbar-actions">
+<button aria-label="Thông báo" class="btn ghost icon-btn topbar-action-btn" id="portalInboxBtn" type="button"><span class="btn-line-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span><b class="notif-badge hidden" id="portalInboxBadge">0</b></button>
+</div>
+</header>
+<div class="portal-content">
+<section class="portal-page-section active" id="page-dashboard">
+<div class="portal-welcome panel">
+<div>
+<p class="eyebrow">UNITE GROUP</p>
+<h2 id="dashboardGreeting">Xin chào</h2>
+<p class="muted">Một nơi để quản lý lịch làm, nhân sự, thông báo và các yêu cầu HR theo đúng tuyến quản lý.</p>
+</div>
+<div class="portal-role-pill" id="dashboardRolePill">—</div>
+</div>
+<div class="grid four portal-metrics">
+<article class="panel metric metric-line-card">
+<div aria-hidden="true" class="metric-line-icon"><svg viewbox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg></div>
+<div class="metric-line-copy"><span>Thông báo chưa đọc</span><b id="metricUnread">0</b></div>
+</article>
+<article class="panel metric metric-line-card">
+<div aria-hidden="true" class="metric-line-icon"><svg viewbox="0 0 24 24"><path d="M4 5h16v12H7l-3 3V5Z"></path><path d="M8 9h8M8 13h5"></path></svg></div>
+<div class="metric-line-copy"><span>Yêu cầu đang xử lý</span><b id="metricCases">0</b></div>
+</article>
+<article class="panel metric metric-line-card manager-card metric-with-breakdown">
+<div aria-hidden="true" class="metric-line-icon"><svg viewbox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
+<div class="metric-line-copy"><span>Nhân sự đang làm</span><b id="metricEmployees">0</b><small class="metric-subline" id="metricEmployeeGroups">U: 0 • TVU: 0 • Chưa mã: 0</small></div>
+</article>
+<article class="panel metric metric-line-card manager-card">
+<div aria-hidden="true" class="metric-line-icon"><svg viewbox="0 0 24 24"><rect height="17" rx="2" width="18" x="3" y="4"></rect><path d="M8 2v4M16 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"></path></svg></div>
+<div class="metric-line-copy"><span>Lịch chờ duyệt</span><b id="metricSchedules">0</b></div>
+</article>
+</div>
+<div class="dashboard-operations-grid manager-card">
+<section class="panel dashboard-command-card dashboard-quick-actions">
+<div class="section-head compact-head"><div><p class="eyebrow">Thao tác nhanh</p><h2>Đi thẳng đến công việc</h2><p class="muted">Các tác vụ HR thường dùng trong ngày.</p></div></div>
+<div class="dashboard-action-grid">
+<button class="dashboard-action hr-only hidden" id="dashboardAddEmployeeBtn" type="button"><span><svg viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></span><b>Thêm nhân sự</b><small>Tạo hồ sơ và tài khoản</small></button>
+<button class="dashboard-action" data-goto="employees" type="button"><span><svg viewbox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"></path></svg></span><b>Danh sách nhân sự</b><small>Lọc, chỉnh sửa, xuất file</small></button>
+<button class="dashboard-action hr-only hidden" data-goto="announcements" type="button"><span><svg viewbox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span><b>Phát thông báo</b><small>Gửi đúng nhóm đối tượng</small></button>
+<button class="dashboard-action" data-goto="schedule" type="button"><span><svg viewbox="0 0 24 24"><rect height="16" rx="2" width="18" x="3" y="5"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg></span><b>Lịch &amp; chấm công</b><small>Duyệt lịch và nghỉ phép</small></button>
+</div>
+</section>
+<section class="panel dashboard-command-card">
+<div class="section-head compact-head"><div><p class="eyebrow">Cơ cấu nhân sự</p><h2>Theo phòng ban</h2><p class="muted">Top phòng ban có nhiều nhân sự đang làm.</p></div><button class="btn ghost compact-btn" data-goto="employees">Xem chi tiết</button></div>
+<div class="dashboard-rank-list" id="dashboardDepartmentBars"><div class="empty-row">Đang tổng hợp...</div></div>
+</section>
+<section class="panel dashboard-command-card">
+<div class="section-head compact-head"><div><p class="eyebrow">Cần xử lý</p><h2>Chất lượng dữ liệu</h2><p class="muted">Các nhóm hồ sơ cần HR ưu tiên rà soát.</p></div></div>
+<div class="dashboard-attention-list" id="dashboardAttentionList"><div class="empty-row">Đang phân tích...</div></div>
+</section>
+</div>
+<div class="dashboard-analytics manager-card">
+<section class="panel dashboard-chart-card">
+<div class="section-head compact-head"><div><p class="eyebrow">Nhân sự</p><h2>Tình hình nhân sự</h2></div><span class="overview-chip" id="dashboardEmployeeTotal">Tổng 0</span></div>
+<div class="dashboard-donut-layout">
+<div class="dashboard-donut" id="employeeStatusDonut"><div><b>0</b><span>Nhân sự</span></div></div>
+<div class="dashboard-legend-list">
+<div><i class="legend-dot active"></i><span>Đang làm</span><b id="dashboardActiveEmployees">0</b></div>
+<div><i class="legend-dot reserved"></i><span>Bảo lưu</span><b id="dashboardReservedEmployees">0</b></div>
+<div><i class="legend-dot resigned"></i><span>Đã nghỉ</span><b id="dashboardResignedEmployees">0</b></div>
+</div>
+</div>
+</section>
+<section class="panel dashboard-chart-card">
+<div class="section-head compact-head"><div><p class="eyebrow">Hôm nay</p><h2>Làm việc &amp; nghỉ</h2></div><span class="overview-chip" id="dashboardTodayLabel">Hôm nay</span></div>
+<div class="dashboard-bar-list">
+<div class="dashboard-bar-item"><div><span>Có lịch làm</span><b id="dashboardWorkingToday">0</b></div><div class="dashboard-bar-track"><i id="dashboardWorkingBar"></i></div></div>
+<div class="dashboard-bar-item"><div><span>Đang nghỉ phép</span><b id="dashboardLeaveToday">0</b></div><div class="dashboard-bar-track"><i id="dashboardLeaveBar"></i></div></div>
+<div class="dashboard-bar-item"><div><span>Lịch bận / học</span><b id="dashboardBusyToday">0</b></div><div class="dashboard-bar-track"><i id="dashboardBusyBar"></i></div></div>
+</div>
+</section>
+<section class="panel dashboard-chart-card">
+<div class="section-head compact-head"><div><p class="eyebrow">Tuần hiện tại</p><h2>Tiến độ đăng ký lịch</h2></div><button class="btn ghost compact-btn" data-goto="schedule">Mở lịch</button></div>
+<div class="registration-progress"><div class="registration-number"><b id="dashboardRegisteredWeek">0</b><span>đã đăng ký</span></div><div class="registration-number muted-number"><b id="dashboardMissingWeek">0</b><span>chưa đăng ký</span></div></div>
+<div class="dashboard-bar-track large"><i id="dashboardRegistrationBar"></i></div>
+<p class="muted dashboard-note" id="dashboardRegistrationText">Đang tính dữ liệu tuần...</p>
+</section>
+</div>
+<div class="portal-dashboard-grid">
+<section class="panel">
+<div class="section-head"><div><p class="eyebrow">Cần chú ý</p><h2>Thông báo mới</h2></div><button class="btn ghost" data-goto="announcements">Xem tất cả</button></div>
+<div class="portal-feed" id="dashboardAnnouncements"><div class="empty-row">Đang tải...</div></div>
+</section>
+<section class="panel">
+<div class="section-head"><div><p class="eyebrow">Công việc</p><h2>Yêu cầu gần đây</h2></div><button class="btn ghost" data-goto="cases">Mở trung tâm</button></div>
+<div class="portal-feed" id="dashboardCases"><div class="empty-row">Đang tải...</div></div>
+</section>
+</div>
+</section>
+<section class="portal-page-section" id="page-announcements">
+<div class="section-head portal-section-head">
+<div><p class="eyebrow">Thông tin chính thức</p><h2>Trung tâm thông báo</h2><p class="muted">Thông báo quan trọng có thể yêu cầu xác nhận đã đọc.</p></div>
+<button class="btn primary hr-only hidden" id="createAnnouncementBtn">Tạo thông báo</button>
+</div>
+<div class="portal-filterbar panel">
+<label>Tìm kiếm <input id="announcementSearch" placeholder="Tiêu đề hoặc nội dung..." type="search"/></label>
+<label>Mức độ <select id="announcementPriorityFilter"><option value="">Tất cả</option><option value="urgent">Khẩn</option><option value="important">Quan trọng</option><option value="normal">Thông tin</option></select></label>
+<label>Trạng thái <select id="announcementReadFilter"><option value="">Tất cả</option><option value="unread">Chưa đọc</option><option value="ack">Đã xác nhận</option></select></label>
+</div>
+<div class="announcement-list" id="announcementList"><div class="empty-row">Đang tải...</div></div>
+</section>
+<section class="portal-page-section" id="page-cases">
+<div class="section-head portal-section-head">
+<div><p class="eyebrow">Tương tác HR</p><h2>Trung tâm yêu cầu &amp; báo cáo</h2><p class="muted">Mỗi nội dung có mã hồ sơ, trạng thái, người phụ trách và lịch sử trao đổi.</p></div>
+<button class="btn primary" id="createCaseBtn">Gửi yêu cầu mới</button>
+</div>
+<div class="portal-filterbar panel">
+<label>Tìm kiếm <input id="caseSearch" placeholder="Mã hồ sơ, tiêu đề, người gửi..." type="search"/></label>
+<label>Trạng thái <select id="caseStatusFilter"><option value="">Tất cả</option><option value="submitted">Mới gửi</option><option value="in_review">Đang xử lý</option><option value="need_info">Cần bổ sung</option><option value="approved">Đã duyệt</option><option value="rejected">Từ chối</option><option value="closed">Đã đóng</option></select></label>
+<label>Mức độ <select id="casePriorityFilter"><option value="">Tất cả</option><option value="urgent">Khẩn</option><option value="high">Cao</option><option value="normal">Bình thường</option><option value="low">Thấp</option></select></label>
+<label class="manager-filter">Khu vực <select id="caseAreaFilter"><option value="">Tất cả</option></select></label>
+</div>
+<div class="case-board" id="caseBoard"><div class="empty-row">Đang tải...</div></div>
+</section>
+<section class="portal-page-section" id="page-my-profile">
+<div class="section-head portal-section-head"><div><p class="eyebrow">Thông tin cá nhân</p><h2>Hồ sơ của tôi</h2><p class="muted">Kiểm tra thông tin đang lưu trên hệ thống. Nếu có sai sót, hãy gửi yêu cầu chỉnh sửa đến HR.</p></div><button class="btn primary" disabled="" id="openMyEmployeeDetailBtn">Xem &amp; báo chỉnh sửa</button></div>
+<div class="panel" id="myProfileContent"><div class="empty-row">Đang tải hồ sơ...</div></div>
+</section>
+<section class="portal-page-section manager-page employee-page-wide" id="page-employees">
+<div class="section-head portal-section-head">
+<div><p class="eyebrow">Hồ sơ nhân sự</p><h2>Danh sách nhân sự</h2><p class="muted">Tìm kiếm, lọc, chỉnh sửa và quản lý tài khoản theo đúng phạm vi phân quyền.</p></div>
+<div class="actions">
+<button class="btn primary hr-only hidden" id="addEmployeeBtn">+ Thêm nhân sự</button>
+<button class="btn secondary hr-only hidden" id="bulkCreateAccountsBtn">Tạo tài khoản hàng loạt</button>
+<button class="btn ghost hr-only hidden" id="linkProfilesBtn">Liên kết tài khoản theo email</button>
+</div>
+</div>
+<section class="panel smart-filter-panel">
+<div><p class="eyebrow">Lọc thông minh</p><h3>Tìm nhân sự bằng câu lệnh tiếng Việt</h3><p class="muted">Ví dụ: “nhân sự đang làm ở Kỳ Tài, team Bros, full time”.</p></div>
+<div class="smart-filter-actions"><input id="employeeSmartFilter" placeholder="Nhập yêu cầu lọc tự nhiên..." type="search"/><button class="btn primary" id="applyEmployeeSmartFilterBtn">Lọc thông minh</button><button class="btn ghost" id="clearEmployeeFiltersBtn">Xóa bộ lọc</button></div>
+<div class="smart-filter-chips" id="employeeSmartFilterChips"></div>
+</section>
+<div class="portal-filterbar panel employee-filterbar">
+<label>Tìm kiếm <input id="employeeSearch" placeholder="Mã, tên, email, số điện thoại..." type="search"/></label>
+<label>Trạng thái <select id="employeeStatusFilter"><option value="">Tất cả</option><option selected="" value="active">Đang làm</option><option value="reserved">Bảo lưu</option><option value="resigned">Đã nghỉ</option><option value="unknown">Chưa rõ</option></select></label>
+<label>Nhóm mã <select id="employeeCodeGroupFilter"><option value="">Tất cả</option><option value="official">Chính thức (U)</option><option value="probation">Thử việc (TVU)</option><option value="no_code">Chưa có mã</option><option value="other">Mã khác</option></select></label>
+<label>Phòng ban <select id="employeeDepartmentFilter"><option value="">Tất cả</option></select></label>
+<label>Khu vực <select id="employeeAreaFilter"><option value="">Tất cả</option></select></label>
+<label>Chi nhánh <select id="employeeBranchFilter"><option value="">Tất cả</option></select></label>
+<label>Team <select id="employeeTeamFilter"><option value="">Tất cả</option></select></label>
+<label>Chức danh <select id="employeeTitleFilter"><option value="">Tất cả</option></select></label>
+<label>Cấp bậc <select id="employeeLevelFilter"><option value="">Tất cả</option></select></label>
+<label>Loại công việc <select id="employeeTypeFilter"><option value="">Tất cả</option></select></label>
+<label class="hr-only hidden">Ngân hàng <select id="employeeBankFilter"><option value="">Tất cả ngân hàng</option></select></label>
+<label class="hr-only hidden">Dữ liệu ngân hàng <select id="employeeBankDataFilter"><option value="">Tất cả</option><option value="complete">Đủ ngân hàng + số tài khoản</option><option value="missing_account">Thiếu số tài khoản</option><option value="missing_bank">Thiếu tên ngân hàng</option><option value="missing_all">Thiếu toàn bộ</option></select></label>
+<label>Chất lượng dữ liệu <select id="employeeQualityFilter"><option value="">Tất cả</option><option value="ok">Đầy đủ</option><option value="needs_review">Cần rà soát</option><option value="invalid">Không hợp lệ</option></select></label>
+<label>Sắp xếp <select id="employeeSortSelect"><option value="organization">Theo tổ chức</option><option value="name_asc">Tên A → Z</option><option value="name_desc">Tên Z → A</option><option value="start_desc">Ngày vào mới nhất</option><option value="code_asc">Mã nhân sự</option></select></label>
+<label>Nhóm hiển thị <select id="employeeGroupSelect"><option selected="" value="department">Theo phòng ban</option><option value="hierarchy_label">Theo cấp quản lý</option><option value="area">Theo khu vực</option><option value="branch">Theo chi nhánh</option><option value="team">Theo Team</option><option value="none">Không nhóm</option></select></label>
+</div>
+<div class="employee-grid-toolbar panel">
+<div class="employee-table-summary"><b id="employeeResultCount">0 nhân sự</b><span id="employeeGridHint">Chỉ hiển thị nhóm có nhân sự; bộ lọc liên hoàn theo Phòng ban → Khu vực → Chi nhánh → Team.</span></div>
+<div class="employee-grid-actions"><button class="btn ghost employee-filter-toggle" id="employeeFilterToggleBtn" type="button">Bộ lọc</button>
+<label>Mẫu cột
+                <select id="employeeColumnView"><option value="operations">Vận hành gọn</option><option value="full">Đầy đủ như Excel</option><option value="accounting">Kế toán / ngân hàng</option><option value="custom">Cột tùy chọn</option></select>
+</label>
+<button class="btn ghost column-customize-btn" id="openEmployeeColumnModalBtn" type="button"><span class="btn-line-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="8" cy="18" r="2"></circle></svg></span><span>Tùy chỉnh cột</span><b id="employeeVisibleColumnCount" class="column-count-badge">0</b></button>
+<label>Số dòng
+                <select id="employeePageSize"><option value="30">30</option><option selected="" value="50">50</option><option value="100">100</option><option value="all">Tất cả</option></select>
+</label>
+<button class="btn ghost" id="employeeGridFullscreenBtn" type="button">Toàn màn hình</button>
+<button class="btn secondary hr-only hidden" id="exportFilteredEmployeesBtn" type="button">Xuất danh sách đang lọc</button>
+</div>
+</div>
+<div aria-live="polite" class="bulk-employee-action-bar hidden" id="bulkEmployeeActionBar">
+<div class="bulk-selection-summary"><span class="bulk-selection-icon"><svg viewbox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></svg></span><div><b id="employeeSelectedCount">Đã chọn 0 nhân sự</b><small>Có thể chọn qua nhiều trang và chỉnh sửa cùng lúc.</small></div></div>
+<div class="bulk-selection-actions">
+<button class="btn ghost" id="selectAllFilteredEmployeesBtn" type="button">Chọn tất cả đang lọc</button>
+<button class="btn ghost" id="clearEmployeeSelectionBtn" type="button">Bỏ chọn</button>
+<button class="btn primary" id="openBulkEmployeeEditBtn" type="button">Sửa hàng loạt</button>
+</div>
+</div>
+<div class="panel table-wrap portal-table-wrap employee-data-grid" id="employeeGridPanel">
+<table id="employeeDataTable"><thead id="employeeTableHead"></thead><tbody id="employeeTable"></tbody></table>
+</div>
+<div class="portal-pagination" id="employeePagination"></div>
+</section>
+<section class="portal-page-section manager-page" id="page-organization">
+<div class="section-head portal-section-head organization-page-head"><div><p class="eyebrow">Cây tổ chức tương tác</p><h2>Công ty → Phòng ban → Khu vực → Chi nhánh → Team</h2><p class="muted">Hiển thị cả khối văn phòng/vận hành và khối kinh doanh. Nhấp vào bất kỳ thẻ nào để xem đúng danh sách thành viên.</p></div><div class="organization-head-actions"><span class="overview-chip" id="organizationActiveCount">0 nhân sự đang làm</span><button class="btn ghost" id="organizationExpandAllBtn" type="button">Mở toàn bộ</button></div></div>
+<div class="org-color-legend">
+<span style="--cluster-color:#ef3340">Tinh Hoa</span><span style="--cluster-color:#f4c430">Kỳ Tài</span><span style="--cluster-color:#1976d2">Tiên Phong</span><span style="--cluster-color:#2e9b52">Bức Phá</span><span style="--cluster-color:#741f2b">Khai Phá</span>
+</div>
+<div class="org-tree" id="organizationTree"><div class="empty-row">Đang tải...</div></div>
+</section>
+<section class="portal-page-section" id="page-schedule">
+<div class="section-head portal-section-head"><div><p class="eyebrow">Lịch làm &amp; chấm công</p><h2>Quản lý lịch trong Cổng HR</h2><p class="muted">Toàn bộ lịch làm được mở trực tiếp trong cùng giao diện, không chuyển sang trang khác.</p></div><button class="btn ghost" id="reloadScheduleFrameBtn">Tải lại lịch</button></div>
+<div class="panel schedule-embed-panel"><iframe id="scheduleFrame" loading="lazy" title="Lịch làm &amp; chấm công"></iframe></div>
+</section>
+<section class="portal-page-section hr-only-page" id="page-import">
+<div class="section-head portal-section-head">
+<div><p class="eyebrow">Dữ liệu HR</p><h2>Nhập file quản lý nhân sự</h2><p class="muted">Đã cấu hình sẵn theo file “Quản lý thông tin nhân sự” bạn gửi. Dữ liệu nhạy cảm chỉ đi vào Supabase, không đưa lên GitHub.</p></div>
+</div>
+<div class="portal-import-grid">
+<section class="panel">
+<h3>1. Chọn file Excel/CSV</h3>
+<label class="file-drop" for="hrImportFile"><span class="file-drop-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"></path></svg></span><span class="file-drop-copy"><b>Thả file Excel/CSV vào đây</b><small>Hoặc bấm để chọn file • .xlsx, .xls, .csv • tối đa 25 MB</small></span><span class="file-drop-cta">Chọn file</span></label>
+<input accept=".xlsx,.xls,.csv" hidden="" id="hrImportFile" type="file"/>
+<p class="muted" id="hrImportFileName">Chưa chọn file.</p>
+<button class="btn secondary" disabled="" id="analyzeImportBtn">Phân tích dữ liệu</button>
+</section>
+<section class="panel">
+<h3>2. Kết quả kiểm tra</h3>
+<div class="import-summary" id="importSummary"><div class="empty-row">Chưa có dữ liệu.</div></div>
+<div class="import-coverage hidden" id="importCoverage"></div>
+<label class="inline-check import-safe-mode"><input checked="" id="importPreserveExistingData" type="checkbox"/> Giữ dữ liệu Supabase khi ô Excel đang trống.</label>
+<div class="actions"><button class="btn primary" disabled="" id="commitImportBtn">Đồng bộ toàn bộ an toàn</button><button class="btn secondary" id="syncSheetNowBtn" type="button">Đồng bộ Supabase → Sheet</button></div>
+<p class="message" id="importMessage"></p>
+</section>
+</div>
+<section class="panel">
+<div class="section-head"><div><p class="eyebrow">Đối chiếu file ↔ Supabase</p><h2>Danh sách thay đổi</h2><p class="muted">Mọi dòng có định danh rõ ràng đều được chọn, kể cả dòng cần rà soát nhẹ. Chỉ khóa dòng có nguy cơ ghép nhầm hồ sơ.</p></div><div class="actions"><select id="importDiffFilter"><option value="all">Tất cả</option><option value="new">Nhân sự mới</option><option value="changed">Có thay đổi</option><option value="unchanged">Không thay đổi</option><option value="review">Cần rà soát</option></select><button class="btn ghost" id="selectChangedImportBtn">Chọn tất cả có thể đồng bộ</button></div></div>
+<div class="table-wrap import-diff-wrap"><table><thead><tr><th><input id="toggleImportSelection" type="checkbox"/></th><th>Dòng</th><th>Mã NV</th><th>Họ tên</th><th>Trạng thái</th><th>Trường thay đổi</th><th>Cảnh báo</th></tr></thead><tbody id="importDiffTable"><tr><td class="empty-row" colspan="7">Chưa phân tích file.</td></tr></tbody></table></div>
+</section>
+</section>
+</div>
+</main>
+</div>
+<div class="uws-modal hidden" id="announcementModal">
+<div class="uws-modal-backdrop" data-close-announcement=""></div>
+<div class="uws-modal-card portal-form-modal">
+<div class="modal-head"><div><p class="eyebrow">HR / ADMIN</p><h2>Tạo thông báo</h2></div><button class="modal-close" data-close-announcement="">×</button></div>
+<div class="form-stack">
+<label>Tiêu đề <input id="announcementTitle" maxlength="180"/></label>
+<label>Nội dung <textarea id="announcementBody" rows="7"></textarea></label>
+<div class="form-grid">
+<label>Mức độ <select id="announcementPriority"><option value="normal">Thông tin</option><option value="important">Quan trọng</option><option value="urgent">Khẩn</option></select></label>
+<label>Đối tượng <select id="announcementTargetType"><option value="all">Toàn công ty</option><option value="role">Theo vai trò</option><option value="department">Theo phòng ban</option><option value="area">Theo khu vực</option><option value="branch">Theo chi nhánh</option><option value="team">Theo team</option><option value="user">Một tài khoản</option></select></label>
+<label class="hidden" id="announcementTargetValueWrap">Đối tượng cụ thể
+            <input id="announcementTargetValue" list="announcementTargetOptions" placeholder="Chọn hoặc nhập chính xác"/>
+<datalist id="announcementTargetOptions"></datalist>
+<small class="muted" id="announcementTargetHint">Chọn từ danh sách gợi ý.</small>
+</label>
+<label>Hết hiệu lực <input id="announcementExpiresAt" type="datetime-local"/></label>
+</div>
+<label class="inline-check"><input id="announcementRequiresAck" type="checkbox"/> Yêu cầu người nhận bấm “Tôi đã đọc”</label>
+<div class="actions"><button class="btn primary" id="publishAnnouncementBtn">Phát thông báo</button><button class="btn ghost" data-close-announcement="">Hủy</button></div>
+<p class="message" id="announcementFormMessage"></p>
+</div>
+</div>
+</div>
+<div class="uws-modal hidden" id="caseCreateModal">
+<div class="uws-modal-backdrop" data-close-case-create=""></div>
+<div class="uws-modal-card portal-form-modal">
+<div class="modal-head"><div><p class="eyebrow">Gửi về HR</p><h2>Tạo yêu cầu / báo cáo</h2></div><button class="modal-close" data-close-case-create="">×</button></div>
+<div class="form-stack">
+<div class="form-grid">
+<label>Loại nội dung <select id="caseType"><option value="hr_support">Yêu cầu HR hỗ trợ</option><option value="attendance">Chấm công / lịch làm</option><option value="profile_update">Bổ sung hồ sơ</option><option value="document">Nộp giấy tờ</option><option value="suggestion">Ý kiến / kiến nghị</option><option value="incident">Báo cáo sự việc</option><option value="complaint">Khiếu nại / phản hồi</option><option value="other">Khác</option></select></label>
+<label>Mức độ <select id="casePriority"><option value="normal">Bình thường</option><option value="high">Cao</option><option value="urgent">Khẩn</option><option value="low">Thấp</option></select></label>
+<label>Quyền riêng tư <select id="caseVisibility"><option value="management">Theo tuyến quản lý + HR</option><option value="hr_private">Chỉ HR/Admin</option></select></label>
+</div>
+<label>Tiêu đề <input id="caseTitle" maxlength="180"/></label>
+<label>Nội dung chi tiết <textarea id="caseDescription" rows="7"></textarea></label>
+<label>Đính kèm tài liệu<span class="file-picker"><input accept="image/*,.pdf,.doc,.docx,.xlsx" hidden="" id="caseFiles" multiple="" type="file"/><span class="file-picker-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></span><span class="file-picker-copy"><b id="caseFilesLabel">Chọn tệp đính kèm</b><small>Ảnh, PDF, DOCX hoặc Excel • tối đa 8 MB/tệp</small></span><span class="file-picker-cta">Chọn tệp</span></span></label>
+<div class="actions"><button class="btn primary" id="submitCaseBtn">Gửi yêu cầu</button><button class="btn ghost" data-close-case-create="">Hủy</button></div>
+<p class="message" id="caseCreateMessage"></p>
+</div>
+</div>
+</div>
+<div class="uws-modal hidden" id="caseDetailModal">
+<div class="uws-modal-backdrop" data-close-case-detail=""></div>
+<div class="uws-modal-card case-detail-card">
+<div class="modal-head"><div><p class="eyebrow" id="caseDetailCode">Hồ sơ</p><h2 id="caseDetailTitle">Chi tiết yêu cầu</h2></div><button class="modal-close" data-close-case-detail="">×</button></div>
+<div class="case-detail-meta" id="caseDetailMeta"></div>
+<div class="case-description" id="caseDetailDescription"></div>
+<div class="attachment-list" id="caseAttachmentList"></div>
+<div class="case-message-list" id="caseMessageList"></div>
+<div class="case-reply-box">
+<textarea id="caseReplyBody" placeholder="Nhập phản hồi hoặc yêu cầu bổ sung..."></textarea>
+<label class="case-reply-files">Đính kèm thêm<span class="file-picker"><input accept="image/*,.pdf,.doc,.docx,.xlsx" hidden="" id="caseReplyFiles" multiple="" type="file"/><span class="file-picker-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></span><span class="file-picker-copy"><b id="caseReplyFilesLabel">Chọn tệp đính kèm</b><small>Ảnh, PDF, DOCX hoặc Excel • tối đa 8 MB/tệp</small></span><span class="file-picker-cta">Chọn tệp</span></span></label>
+<div class="actions">
+<button class="btn primary" id="sendCaseReplyBtn">Gửi phản hồi</button>
+<select class="hr-only-control hidden" id="caseStatusUpdate"><option value="">Cập nhật trạng thái...</option><option value="in_review">Đang xử lý</option><option value="need_info">Cần bổ sung</option><option value="approved">Đã duyệt</option><option value="rejected">Từ chối</option><option value="closed">Đóng hồ sơ</option></select>
+</div>
+<div class="case-assignment-panel hr-only-control hidden">
+<label>Người phụ trách <select id="caseAssigneeUpdate"><option value="">Chưa phân công</option></select></label>
+<label>Hạn xử lý <input id="caseDueAtUpdate" type="datetime-local"/></label>
+<button class="btn secondary" id="saveCaseAssignmentBtn" type="button">Lưu phân công</button>
+</div>
+<p class="message" id="caseDetailMessage"></p>
+</div>
+</div>
+</div>
+<div class="uws-modal hidden" id="employeeDetailModal">
+<div class="uws-modal-backdrop" data-close-employee-detail=""></div>
+<div class="uws-modal-card employee-detail-card">
+<div class="modal-head"><div><p class="eyebrow">Hồ sơ nhân sự</p><h2 id="employeeDetailName">Nhân sự</h2></div><button class="modal-close" data-close-employee-detail="">×</button></div>
+<div id="employeeDetailContent"></div>
+<div class="employee-detail-actions">
+<button class="btn primary hidden" id="editEmployeeBtn" type="button">Chỉnh sửa hồ sơ</button>
+<button class="btn primary hidden" id="saveEmployeeBtn" type="button">Lưu thay đổi</button>
+<button class="btn ghost hidden" id="cancelEmployeeEditBtn" type="button">Hủy chỉnh sửa</button>
+<button class="btn secondary" id="reportEmployeeCorrectionBtn" type="button">Báo thông tin sai</button>
+</div>
+<p class="message" id="employeeDetailMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="employeeCorrectionModal">
+<div class="uws-modal-backdrop" data-close-employee-correction=""></div>
+<div class="uws-modal-card portal-form-modal">
+<div class="modal-head"><div><p class="eyebrow">Yêu cầu chỉnh sửa</p><h2>Báo thông tin nhân sự chưa đúng</h2></div><button class="modal-close" data-close-employee-correction="">×</button></div>
+<div class="form-stack">
+<label>Thông tin cần sửa <textarea id="employeeCorrectionNote" placeholder="Ví dụ: Team hiện tại là Bros, số điện thoại đúng là..." rows="6"></textarea></label>
+<label>Giá trị đề xuất (không bắt buộc) <textarea id="employeeCorrectionProposal" placeholder="Có thể ghi theo dạng: Điện thoại: ...; Team: ..." rows="4"></textarea></label>
+<div class="actions"><button class="btn primary" id="submitEmployeeCorrectionBtn">Gửi về HR</button><button class="btn ghost" data-close-employee-correction="">Hủy</button></div>
+<p class="message" id="employeeCorrectionMessage"></p>
+</div>
+</div>
+</div>
+<div class="uws-modal hidden" id="addEmployeeModal">
+<div class="uws-modal-backdrop" data-close-add-employee=""></div>
+<div class="uws-modal-card portal-form-modal add-employee-modal-card">
+<div class="modal-head"><div><p class="eyebrow">HR / ADMIN</p><h2>Thêm nhân sự mới</h2><p class="muted">Có email hợp lệ sẽ mặc định tạo tài khoản đăng nhập với mật khẩu tạm và buộc đổi ở lần đầu.</p></div><button class="modal-close" data-close-add-employee="">×</button></div>
+<div class="form-grid add-employee-grid enhanced-add-grid">
+<label>Mã nhân sự <input id="newEmployeeCode"/></label><label>Họ tên <input id="newEmployeeName"/></label><label>Nick Name <input id="newEmployeeNickname"/></label>
+<label>Email công việc <input id="newEmployeeWorkEmail" type="email"/></label><label>Email cá nhân <input id="newEmployeePersonalEmail" type="email"/></label><label>Điện thoại <input id="newEmployeePhone"/></label>
+<label>Phòng ban <input id="newEmployeeDepartment" list="newEmployeeDepartmentOptions" placeholder="Chọn từ danh sách hoặc nhập mới"/><small class="field-hint">Có thể chọn nhanh hoặc nhập mới.</small><datalist id="newEmployeeDepartmentOptions"></datalist></label>
+<label>Khu vực <input id="newEmployeeArea" list="newEmployeeAreaOptions" placeholder="Chọn từ danh sách hoặc nhập mới"/><small class="field-hint">Có thể chọn nhanh hoặc nhập mới.</small><datalist id="newEmployeeAreaOptions"></datalist></label>
+<label>Chi nhánh <input id="newEmployeeBranch" list="newEmployeeBranchOptions" placeholder="Chọn từ danh sách hoặc nhập mới"/><small class="field-hint">Có thể chọn nhanh hoặc nhập mới.</small><datalist id="newEmployeeBranchOptions"></datalist></label>
+<label>Team <input id="newEmployeeTeam" list="newEmployeeTeamOptions" placeholder="Chọn từ danh sách hoặc nhập mới"/><small class="field-hint">Có thể chọn nhanh hoặc nhập mới.</small><datalist id="newEmployeeTeamOptions"></datalist></label>
+<label>Chức danh <input id="newEmployeeTitle" list="newEmployeeTitleOptions" placeholder="Chọn từ danh sách hoặc nhập mới"/><small class="field-hint">Có thể chọn nhanh hoặc nhập mới.</small><datalist id="newEmployeeTitleOptions"></datalist></label>
+<label>Cấp bậc <input id="newEmployeeLevel" list="newEmployeeLevelOptions" placeholder="Chọn từ danh sách hoặc nhập mới"/><small class="field-hint">Có thể chọn nhanh hoặc nhập mới.</small><datalist id="newEmployeeLevelOptions"></datalist></label>
+<label>Loại công việc <select id="newEmployeeType"><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="TTS">TTS</option><option value="CTV">CTV</option></select></label>
+<label>Ngày bắt đầu <input id="newEmployeeStartDate" type="date"/></label><label>Vai trò tài khoản <select id="newEmployeeRole"><option value="SALE">SALE</option><option value="EMPLOYEE">NHÂN VIÊN</option><option value="TTS">TTS</option><option value="NVPT">NVPT</option><option value="LEADER">LEADER</option><option value="BRANCH_MANAGER">QUẢN LÝ CHI NHÁNH</option><option value="AREA_MANAGER">QUẢN LÝ KHU VỰC</option><option value="HR">HR</option></select></label>
+</div>
+<label class="inline-check"><input checked="" id="newEmployeeCreateAccount" type="checkbox"/> Tự tạo tài khoản khi có email</label>
+<div class="temporary-password-note">Mật khẩu tạm mặc định: <b>12345678</b>. Người dùng buộc đổi mật khẩu ngay lần đăng nhập đầu tiên.</div>
+<div class="actions"><button class="btn primary" id="createEmployeeBtn">Tạo nhân sự</button><button class="btn ghost" data-close-add-employee="">Hủy</button></div>
+<p class="message" id="addEmployeeMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="bulkAccountModal">
+<div class="uws-modal-backdrop" data-close-bulk-account=""></div>
+<div class="uws-modal-card bulk-account-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">HR / ADMIN</p>
+<h2>Tạo tài khoản hàng loạt</h2>
+<p class="muted">Chỉ tạo cho nhân sự đang làm, có mã và email hợp lệ, chưa có tài khoản. Mật khẩu tạm mặc định là <b>12345678</b> và bắt buộc đổi ở lần đăng nhập đầu tiên.</p>
+</div>
+<button class="modal-close" data-close-bulk-account="">×</button>
+</div>
+<div class="bulk-account-summary" id="bulkAccountSummary">
+<article><span>Tổng hồ sơ</span><b id="bulkTotalCount">0</b></article>
+<article><span>Đủ điều kiện</span><b id="bulkEligibleCount">0</b></article>
+<article><span>Đã có tài khoản</span><b id="bulkExistingCount">0</b></article>
+<article><span>Cần rà soát</span><b id="bulkReviewCount">0</b></article>
+</div>
+<div class="bulk-account-toolbar">
+<label>Tìm kiếm <input id="bulkAccountSearch" placeholder="Mã, tên, email..." type="search"/></label>
+<label>Trạng thái
           <select id="bulkAccountStatusFilter">
-            <option value="">Tất cả</option>
-            <option value="eligible">Đủ điều kiện</option>
-            <option value="auth_orphan">Auth chưa liên kết</option>
-            <option value="existing">Đã có tài khoản</option>
-            <option value="problem">Cần rà soát</option>
-          </select>
-        </label>
-        <label>Khu vực <select id="bulkAccountAreaFilter"><option value="">Tất cả khu vực</option></select></label>
-        <label>Chi nhánh <select id="bulkAccountBranchFilter"><option value="">Tất cả chi nhánh</option></select></label>
-        <label>Team <select id="bulkAccountTeamFilter"><option value="">Tất cả team</option></select></label>
-      </div>
-
-      <div class="bulk-account-actions">
-        <div class="actions">
-          <button id="refreshBulkAccountsBtn" class="btn ghost" type="button">Làm mới danh sách</button>
-          <button id="selectEligibleBulkBtn" class="btn secondary" type="button">Chọn tất cả đủ điều kiện</button>
-          <button id="clearBulkSelectionBtn" class="btn ghost" type="button">Bỏ chọn</button>
-        </div>
-        <div class="actions">
-          <span id="bulkSelectedCount" class="overview-chip">Đã chọn 0</span>
-          <button id="createBulkAccountsBtn" class="btn primary" type="button" disabled>Tạo tài khoản đã chọn</button>
-        </div>
-      </div>
-
-      <div class="table-wrap bulk-account-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th><input id="toggleBulkVisible" type="checkbox" aria-label="Chọn các dòng đang hiển thị" /></th>
-              <th>Nhân sự</th>
-              <th>Email</th>
-              <th>Phạm vi</th>
-              <th>Vai trò</th>
-              <th>Trạng thái</th>
-            </tr>
-          </thead>
-          <tbody id="bulkAccountTable"><tr><td colspan="6" class="empty-row">Nhấn “Làm mới danh sách” để kiểm tra điều kiện.</td></tr></tbody>
-        </table>
-      </div>
-      <div class="bulk-account-footer">
-        <div class="bulk-progress"><div id="bulkProgressBar"></div></div>
-        <p id="bulkAccountMessage" class="message"></p>
-      </div>
-    </div>
-  </div>
-
-  <div id="orgDetailModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-org-detail></div>
-    <div class="uws-modal-card org-detail-modal-card">
-      <div class="modal-head"><div><p id="orgDetailType" class="eyebrow">Đơn vị</p><h2 id="orgDetailTitle">Chi tiết tổ chức</h2></div><button class="modal-close" data-close-org-detail>×</button></div>
-      <div id="orgDetailSummary" class="org-detail-summary"></div>
-      <div class="table-wrap"><table><thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Chi nhánh</th><th>Team</th><th>Trạng thái</th><th></th></tr></thead><tbody id="orgMemberTable"></tbody></table></div>
-    </div>
-  </div>
-
-  <div id="portalPasswordModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-portal-password></div>
-    <div class="uws-modal-card password-modal-card">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">Bảo mật tài khoản</p>
-          <h2>Đổi mật khẩu</h2>
-          <p class="muted">Nhập mật khẩu hiện tại để xác nhận, sau đó đặt mật khẩu mới.</p>
-        </div>
-        <button class="modal-close" type="button" data-close-portal-password>×</button>
-      </div>
-      <div class="form-stack password-form">
-        <label>Mật khẩu hiện tại <input id="portalCurrentPasswordInput" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu đang dùng" /></label>
-        <label>Mật khẩu mới <input id="portalNewPasswordInput" type="password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự" /></label>
-        <label>Nhập lại mật khẩu mới <input id="portalConfirmNewPasswordInput" type="password" autocomplete="new-password" placeholder="Nhập lại mật khẩu mới" /></label>
-      </div>
-      <div class="password-rules">
-        <span>Mật khẩu mới nên có ít nhất 8 ký tự.</span>
-        <span>Không dùng lại mật khẩu tạm hoặc mật khẩu quá dễ đoán.</span>
-      </div>
-      <div class="actions modal-actions">
-        <button id="submitPortalPasswordBtn" class="btn primary" type="button">Cập nhật mật khẩu</button>
-        <button class="btn ghost" type="button" data-close-portal-password>Hủy</button>
-      </div>
-      <p id="portalPasswordMessage" class="message" aria-live="polite"></p>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="./js/config.js?v=32"></script>
-  <script src="./js/import-mapper.js?v=34"></script>
-  <script src="./js/portal.js?v=34"></script>
+<option value="">Tất cả</option>
+<option value="eligible">Đủ điều kiện</option>
+<option value="auth_orphan">Auth chưa liên kết</option>
+<option value="existing">Đã có tài khoản</option>
+<option value="problem">Cần rà soát</option>
+</select>
+</label>
+<label>Khu vực <select id="bulkAccountAreaFilter"><option value="">Tất cả khu vực</option></select></label>
+<label>Chi nhánh <select id="bulkAccountBranchFilter"><option value="">Tất cả chi nhánh</option></select></label>
+<label>Team <select id="bulkAccountTeamFilter"><option value="">Tất cả team</option></select></label>
+</div>
+<div class="bulk-account-actions">
+<div class="actions">
+<button class="btn ghost" id="refreshBulkAccountsBtn" type="button">Làm mới danh sách</button>
+<button class="btn secondary" id="selectEligibleBulkBtn" type="button">Chọn tất cả đủ điều kiện</button>
+<button class="btn ghost" id="clearBulkSelectionBtn" type="button">Bỏ chọn</button>
+</div>
+<div class="actions">
+<span class="overview-chip" id="bulkSelectedCount">Đã chọn 0</span>
+<button class="btn primary" disabled="" id="createBulkAccountsBtn" type="button">Tạo tài khoản đã chọn</button>
+</div>
+</div>
+<div class="table-wrap bulk-account-table-wrap">
+<table>
+<thead>
+<tr>
+<th><input aria-label="Chọn các dòng đang hiển thị" id="toggleBulkVisible" type="checkbox"/></th>
+<th>Nhân sự</th>
+<th>Email</th>
+<th>Phạm vi</th>
+<th>Vai trò</th>
+<th>Trạng thái</th>
+</tr>
+</thead>
+<tbody id="bulkAccountTable"><tr><td class="empty-row" colspan="6">Nhấn “Làm mới danh sách” để kiểm tra điều kiện.</td></tr></tbody>
+</table>
+</div>
+<div class="bulk-account-footer">
+<div class="bulk-progress"><div id="bulkProgressBar"></div></div>
+<p class="message" id="bulkAccountMessage"></p>
+</div>
+</div>
+</div>
+<div class="uws-modal hidden" id="employeeColumnModal">
+<div class="uws-modal-backdrop" data-close-employee-columns=""></div>
+<div class="uws-modal-card employee-column-modal-card">
+<div class="modal-head"><div><p class="eyebrow">Tùy biến bảng nhân sự</p><h2>Chọn cột hiển thị &amp; xuất Excel</h2><p class="muted">Mã nhân sự và họ tên luôn được giữ cố định. Lựa chọn được lưu riêng cho tài khoản này và tự khôi phục khi đăng nhập lại.</p></div><button class="modal-close" data-close-employee-columns="" type="button">×</button></div>
+<div class="employee-column-toolbar">
+<label>Mẫu nhanh<select id="employeeColumnPresetSelect"><option value="operations">Vận hành gọn</option><option value="full">Đầy đủ như Excel</option><option value="accounting">Kế toán / ngân hàng</option></select></label>
+<button class="btn ghost" id="employeeColumnSelectAllBtn" type="button">Chọn tất cả được phép</button>
+<button class="btn ghost" id="employeeColumnResetBtn" type="button">Khôi phục mẫu</button>
+</div>
+<div class="employee-column-groups" id="employeeColumnGroups"></div>
+<div class="employee-column-footer"><div><b id="employeeColumnSelectionSummary">0 cột được chọn</b><small>Các cột đã chọn cũng là các cột được xuất trong sheet “Danh sách đã lọc”.</small></div><div class="actions"><button class="btn primary" id="applyEmployeeColumnsBtn" type="button">Áp dụng &amp; lưu</button><button class="btn ghost" data-close-employee-columns="" type="button">Hủy</button></div></div>
+<p aria-live="polite" class="message" id="employeeColumnMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="orgDetailModal">
+<div class="uws-modal-backdrop" data-close-org-detail=""></div>
+<div class="uws-modal-card org-detail-modal-card">
+<div class="modal-head"><div><p class="eyebrow" id="orgDetailType">Đơn vị</p><h2 id="orgDetailTitle">Chi tiết tổ chức</h2></div><button class="modal-close" data-close-org-detail="">×</button></div>
+<div class="org-detail-summary" id="orgDetailSummary"></div>
+<div class="table-wrap"><table><thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Chi nhánh</th><th>Team</th><th>Trạng thái</th><th></th></tr></thead><tbody id="orgMemberTable"></tbody></table></div>
+</div>
+</div>
+<div class="uws-modal hidden" id="bulkEmployeeEditModal">
+<div class="uws-modal-backdrop" data-close-bulk-employee=""></div>
+<div class="uws-modal-card bulk-employee-edit-card">
+<div class="modal-head"><div><p class="eyebrow">Cập nhật nhiều hồ sơ</p><h2>Chỉnh sửa nhân sự hàng loạt</h2><p class="muted" id="bulkEmployeeEditSummary">Chưa chọn nhân sự.</p></div><button class="modal-close" data-close-bulk-employee="" type="button">×</button></div>
+<div class="bulk-edit-warning"><svg viewbox="0 0 24 24"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.8 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z"></path></svg><span>Chỉ những trường được bật mới thay đổi. Các trường còn lại được giữ nguyên.</span></div>
+<div class="bulk-edit-grid">
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="department" type="checkbox"/> Phòng ban</span><input disabled="" id="bulkEmployeeDepartment" list="bulkDepartmentOptions" placeholder="Nhập phòng ban mới"/><datalist id="bulkDepartmentOptions"></datalist></label>
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="area" type="checkbox"/> Khu vực</span><input disabled="" id="bulkEmployeeArea" list="bulkAreaOptions" placeholder="Nhập khu vực mới"/><datalist id="bulkAreaOptions"></datalist></label>
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="branch" type="checkbox"/> Chi nhánh</span><input disabled="" id="bulkEmployeeBranch" list="bulkBranchOptions" placeholder="Nhập chi nhánh mới"/><datalist id="bulkBranchOptions"></datalist></label>
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="team" type="checkbox"/> Team / nhóm</span><input disabled="" id="bulkEmployeeTeam" list="bulkTeamOptions" placeholder="Ví dụ: ONTOP"/><datalist id="bulkTeamOptions"></datalist></label>
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="title" type="checkbox"/> Chức danh</span><input disabled="" id="bulkEmployeeTitle" list="bulkTitleOptions" placeholder="Nhập chức danh mới"/><datalist id="bulkTitleOptions"></datalist></label>
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="employment_level" type="checkbox"/> Cấp bậc</span><input disabled="" id="bulkEmployeeLevel" list="bulkLevelOptions" placeholder="Nhập cấp bậc mới"/><datalist id="bulkLevelOptions"></datalist></label>
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="employment_type" type="checkbox"/> Loại công việc</span><select disabled="" id="bulkEmployeeType"><option value="">Chọn loại</option><option>Full Time</option><option>Part Time</option><option>TTS</option><option>CTV</option></select></label>
+<label class="bulk-edit-field"><span><input data-bulk-field-toggle="employment_status" type="checkbox"/> Trạng thái</span><select disabled="" id="bulkEmployeeStatus"><option value="">Chọn trạng thái</option><option value="active">Đang làm</option><option value="reserved">Bảo lưu</option><option value="resigned">Đã nghỉ</option><option value="unknown">Chưa rõ</option></select></label>
+</div>
+<div class="bulk-edit-preview"><b>Phạm vi áp dụng</b><p id="bulkEmployeePreview">Chọn ít nhất một trường cần cập nhật.</p></div>
+<div class="actions modal-actions"><button class="btn primary" id="saveBulkEmployeeEditBtn" type="button">Cập nhật nhân sự đã chọn</button><button class="btn ghost" data-close-bulk-employee="" type="button">Hủy</button></div>
+<p aria-live="polite" class="message" id="bulkEmployeeEditMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="portalChangePasswordModal">
+<div class="uws-modal-backdrop" data-close-portal-password=""></div>
+<div class="uws-modal-card password-modal-card">
+<div class="modal-head"><div><p class="eyebrow">Bảo mật tài khoản</p><h2>Đổi mật khẩu</h2><p class="muted">Xác nhận mật khẩu hiện tại trước khi đặt mật khẩu mới.</p></div><button class="modal-close" data-close-portal-password="" type="button">×</button></div>
+<div class="form-stack password-form">
+<label>Mật khẩu hiện tại<input autocomplete="current-password" id="portalCurrentPassword" placeholder="Nhập mật khẩu đang dùng" type="password"/></label>
+<label>Mật khẩu mới<input autocomplete="new-password" id="portalNewPassword" placeholder="Tối thiểu 8 ký tự" type="password"/></label>
+<label>Nhập lại mật khẩu mới<input autocomplete="new-password" id="portalConfirmPassword" placeholder="Nhập lại mật khẩu mới" type="password"/></label>
+</div>
+<div class="password-rules"><span>Tối thiểu 8 ký tự.</span><span>Không dùng lại mật khẩu mặc định 12345678.</span></div>
+<div class="actions modal-actions"><button class="btn primary" id="portalSubmitPasswordBtn" type="button">Cập nhật mật khẩu</button><button class="btn ghost" data-close-portal-password="" type="button">Hủy</button></div>
+<p aria-live="polite" class="message" id="portalPasswordMessage"></p>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="./js/config.js?v=35"></script>
+<script src="./js/import-mapper.js?v=35"></script>
+<script src="./js/portal.js?v=37"></script>
 </body>
 </html>

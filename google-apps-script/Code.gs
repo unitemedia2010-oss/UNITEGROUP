@@ -8,11 +8,11 @@ const UNITE_HR = Object.freeze({
   LOG_SHEET: 'SYNC_LOG',
   MAX_FILE_BYTES: 8 * 1024 * 1024,
   EDITABLE_START_COLUMN: 2,
-  EDITABLE_END_COLUMN: 19,
-  SYNC_STATUS_COLUMN: 24,
-  SYNC_ERROR_COLUMN: 25,
+  EDITABLE_END_COLUMN: 18,
+  SYNC_STATUS_COLUMN: 23,
+  SYNC_ERROR_COLUMN: 24,
   HEADERS: [
-    'STT tổ chức', 'Mã nhân sự', 'Họ tên', 'Nick Name', 'Phòng ban', 'Khu vực', 'Chi nhánh', 'Team',
+    'STT tổ chức', 'Mã nhân sự', 'Họ tên', 'Phòng ban', 'Khu vực', 'Chi nhánh', 'Team',
     'Chức danh', 'Cấp bậc', 'Loại công việc', 'Email công việc', 'Email cá nhân',
     'Điện thoại', 'Ngày vào làm', 'Ngày chính thức', 'Ngày nghỉ', 'Trạng thái',
     'Chất lượng dữ liệu', 'Tuyến tổ chức',
@@ -215,11 +215,11 @@ function pushRows_(sheet, rowNumbers) {
     rowChunk.forEach((row, index) => {
       const result = results[index] || { ok: false, message: 'Không nhận được kết quả.' };
       if (result.ok) {
-        sheet.getRange(row, 22).setValue(result.sync_version || '');
-        sheet.getRange(row, 23).setValue(result.updated_at || new Date());
+        sheet.getRange(row, 21).setValue(result.sync_version || '');
+        sheet.getRange(row, 22).setValue(result.updated_at || new Date());
         sheet.getRange(row, UNITE_HR.SYNC_STATUS_COLUMN).setValue('SYNCED');
         sheet.getRange(row, UNITE_HR.SYNC_ERROR_COLUMN).clearContent();
-        sheet.getRange(row, 26).setValue(result.employee_code || sheet.getRange(row, 2).getValue() || '');
+        sheet.getRange(row, 25).setValue(result.employee_code || sheet.getRange(row, 2).getValue() || '');
         success++;
       } else {
         sheet.getRange(row, UNITE_HR.SYNC_STATUS_COLUMN).setValue(result.conflict ? 'CONFLICT' : 'ERROR');
@@ -280,8 +280,8 @@ function replaceEmployeeSheetFromApp_(body) {
 
 function refreshOrganizationDirectoryFromRows_(rows) {
   const sheet = ensureDirectorySheet_(getSpreadsheet_());
-  const headers = ['STT', 'Mã nhân sự', 'Họ tên', 'Nick Name', 'Phòng ban', 'Khu vực', 'Chi nhánh', 'Team', 'Chức danh', 'Cấp bậc', 'Loại công việc', 'Email công việc', 'Email cá nhân', 'Điện thoại', 'Ngày vào làm', 'Ngày chính thức', 'Ngày nghỉ', 'Trạng thái', 'Chất lượng dữ liệu', 'Tuyến tổ chức'];
-  const values = rows.map((item, index) => employeeToSheetRow_(item, index).slice(0, 20));
+  const headers = ['STT', 'Mã nhân sự', 'Họ tên', 'Phòng ban', 'Khu vực', 'Chi nhánh', 'Team', 'Chức danh', 'Cấp bậc', 'Loại công việc', 'Email công việc', 'Email cá nhân', 'Điện thoại', 'Ngày vào làm', 'Ngày chính thức', 'Ngày nghỉ', 'Trạng thái', 'Chất lượng dữ liệu', 'Tuyến tổ chức'];
+  const values = rows.map((item, index) => employeeToSheetRow_(item, index).slice(0, 19));
   sheet.clear();
   if (sheet.getMaxColumns() < headers.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -421,8 +421,8 @@ function refreshOrganizationDirectory() {
 
 function writeDirectoryRows_(rows) {
   const sheet = ensureDirectorySheet_(getSpreadsheet_());
-  const headers = UNITE_HR.HEADERS.slice(0, 20);
-  const values = rows.map((item, index) => employeeToSheetRow_(item, index).slice(0, 20));
+  const headers = UNITE_HR.HEADERS.slice(0, 19);
+  const values = rows.map((item, index) => employeeToSheetRow_(item, index).slice(0, 19));
 
   sheet.clear();
   if (sheet.getMaxColumns() < headers.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
@@ -439,13 +439,13 @@ function writeDirectoryRows_(rows) {
     .setBackground('#741f2b')
     .setFontColor('#ffffff')
     .setHorizontalAlignment('center');
-  sheet.getRange('A:T').setWrap(false);
+  sheet.getRange('A:S').setWrap(false);
   sheet.setColumnWidth(1, 90);
   sheet.setColumnWidth(2, 120);
   sheet.setColumnWidth(3, 210);
   sheet.setColumnWidths(4, 6, 135);
   sheet.setColumnWidths(10, 9, 125);
-  sheet.getRange(2, 15, Math.max(values.length, 1), 3).setNumberFormat('dd/MM/yyyy');
+  sheet.getRange(2, 14, Math.max(values.length, 1), 3).setNumberFormat('dd/MM/yyyy');
   ensureFilterRange_(sheet, headers.length);
   applyHierarchyRowColors_(sheet, Math.max(values.length + 1, 2));
 }
@@ -467,7 +467,7 @@ function restoreOrganizationOrder() {
 
 function toggleTechnicalColumns() {
   const sheet = ensureEmployeeSheet_(getSpreadsheet_());
-  const first = 21;
+  const first = 20;
   const count = UNITE_HR.HEADERS.length - first + 1;
   if (sheet.isColumnHiddenByUser(first)) sheet.showColumns(first, count);
   else sheet.hideColumns(first, count);
@@ -486,17 +486,17 @@ function ensureFilterRange_(sheet, columnCount) {
 
 function applyHierarchyRowColors_(sheet, lastRow) {
   if (lastRow <= 1) return;
-  const dataRange = sheet.getRange(2, 1, lastRow - 1, Math.min(20, sheet.getMaxColumns()));
+  const dataRange = sheet.getRange(2, 1, lastRow - 1, Math.min(19, sheet.getMaxColumns()));
   const rules = sheet.getConditionalFormatRules().filter(rule => {
     const ranges = rule.getRanges();
     return !ranges.some(range => range.getSheet().getName() === sheet.getName());
   });
   rules.push(
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$T2="Ban lãnh đạo"').setBackground('#f8e7eb').setBold(true).setRanges([dataRange]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$T2="Quản lý phòng ban"').setBackground('#fff5df').setRanges([dataRange]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$T2="Quản lý khu vực"').setBackground('#eaf4ff').setRanges([dataRange]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$T2="Quản lý chi nhánh"').setBackground('#edf8f1').setRanges([dataRange]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$T2="Leader"').setBackground('#f2effc').setRanges([dataRange]).build()
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$S2="Ban lãnh đạo"').setBackground('#f8e7eb').setBold(true).setRanges([dataRange]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$S2="Quản lý phòng ban"').setBackground('#fff5df').setRanges([dataRange]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$S2="Quản lý khu vực"').setBackground('#eaf4ff').setRanges([dataRange]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$S2="Quản lý chi nhánh"').setBackground('#edf8f1').setRanges([dataRange]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$S2="Leader"').setBackground('#f2effc').setRanges([dataRange]).build()
   );
   sheet.setConditionalFormatRules(rules);
 }
@@ -540,14 +540,14 @@ function applyEmployeeSheetFormatting_(sheet) {
     .setBackground('#741f2b')
     .setFontColor('#ffffff')
     .setHorizontalAlignment('center');
-  sheet.getRange('A:T').setWrap(false);
+  sheet.getRange('A:S').setWrap(false);
   sheet.setColumnWidth(1, 90);
   sheet.setColumnWidth(2, 120);
   sheet.setColumnWidth(3, 210);
   sheet.setColumnWidths(4, 6, 135);
   sheet.setColumnWidths(10, 9, 125);
   if (sheet.getMaxColumns() >= UNITE_HR.HEADERS.length) {
-    sheet.hideColumns(21, UNITE_HR.HEADERS.length - 20);
+    sheet.hideColumns(20, UNITE_HR.HEADERS.length - 19);
   }
 
   const statusRule = SpreadsheetApp.newDataValidation()
@@ -559,9 +559,9 @@ function applyEmployeeSheetFormatting_(sheet) {
     .setAllowInvalid(false)
     .build();
   if (sheet.getMaxRows() > 1) {
-    sheet.getRange(2, 18, sheet.getMaxRows() - 1, 1).setDataValidation(statusRule);
-    sheet.getRange(2, 19, sheet.getMaxRows() - 1, 1).setDataValidation(qualityRule);
-    sheet.getRange(2, 15, sheet.getMaxRows() - 1, 3).setNumberFormat('dd/MM/yyyy');
+    sheet.getRange(2, 17, sheet.getMaxRows() - 1, 1).setDataValidation(statusRule);
+    sheet.getRange(2, 18, sheet.getMaxRows() - 1, 1).setDataValidation(qualityRule);
+    sheet.getRange(2, 14, sheet.getMaxRows() - 1, 3).setNumberFormat('dd/MM/yyyy');
     sheet.getRange(2, 2, sheet.getMaxRows() - 1, 1).setNote('Mã nhân sự là khóa duy nhất. Khi đổi mã, hệ thống sẽ kiểm tra trùng trước khi đồng bộ.');
   }
 
@@ -574,7 +574,7 @@ function applyEmployeeSheetFormatting_(sheet) {
 function employeeToSheetRow_(item, index) {
   return [
     Number(index || 0) + 1,
-    item.employee_code || '', item.full_name || '', item.nickname || '', item.department || '', item.area || '', item.branch || '', item.team || '',
+    item.employee_code || '', item.full_name || '', item.department || '', item.area || '', item.branch || '', item.team || '',
     item.title || '', item.employment_level || '', item.employment_type || '', item.work_email || '', item.personal_email || '',
     item.phone || '', toSheetDate_(item.start_date), toSheetDate_(item.official_date), toSheetDate_(item.end_date),
     item.employment_status || 'unknown', item.data_quality || 'needs_review', item.hierarchy_label || '',
@@ -589,25 +589,24 @@ function sheetRowToEmployee_(sheet, row) {
   return {
     employee_code: nullableString_(values[1]),
     full_name: nullableString_(values[2]),
-    nickname: nullableString_(values[3]),
-    department: nullableString_(values[4]),
-    area: nullableString_(values[5]),
-    branch: nullableString_(values[6]),
-    team: nullableString_(values[7]),
-    title: nullableString_(values[8]),
-    employment_level: nullableString_(values[9]),
-    employment_type: nullableString_(values[10]),
-    work_email: nullableString_(values[11]),
-    personal_email: nullableString_(values[12]),
-    phone: nullableString_(values[13]),
-    start_date: dateToIso_(values[14]),
-    official_date: dateToIso_(values[15]),
-    end_date: dateToIso_(values[16]),
-    employment_status: nullableString_(values[17]) || 'unknown',
-    data_quality: nullableString_(values[18]) || 'needs_review',
-    employee_id: nullableString_(values[20]),
-    sync_version: Number(values[21] || 0),
-    original_employee_code: nullableString_(values[25])
+    department: nullableString_(values[3]),
+    area: nullableString_(values[4]),
+    branch: nullableString_(values[5]),
+    team: nullableString_(values[6]),
+    title: nullableString_(values[7]),
+    employment_level: nullableString_(values[8]),
+    employment_type: nullableString_(values[9]),
+    work_email: nullableString_(values[10]),
+    personal_email: nullableString_(values[11]),
+    phone: nullableString_(values[12]),
+    start_date: dateToIso_(values[13]),
+    official_date: dateToIso_(values[14]),
+    end_date: dateToIso_(values[15]),
+    employment_status: nullableString_(values[16]) || 'unknown',
+    data_quality: nullableString_(values[17]) || 'needs_review',
+    employee_id: nullableString_(values[19]),
+    sync_version: Number(values[20] || 0),
+    original_employee_code: nullableString_(values[24])
   };
 }
 

@@ -1,10 +1,10 @@
-const CACHE_NAME = "unite-hr-portal-v31";
+const CACHE_NAME = "unite-hr-portal-v37";
 const APP_SHELL = [
   "./", "./index.html", "./portal.html", "./admin.html", "./employee.html", "./change-password.html",
-  "./css/app.css?v=31", "./js/config.js?v=31", "./js/auth.js?v=31",
-  "./js/portal.js?v=31", "./js/import-mapper.js?v=31",
-  "./js/admin.js?v=31", "./js/employee.js?v=31", "./js/first-password.js?v=31",
-  "./icons/icon-192.png", "./icons/icon-512.png"
+  "./css/app.css?v=37", "./css/v35.css?v=37", "./css/v36.css?v=37", "./js/config.js?v=35", "./js/auth.js?v=35",
+  "./js/portal.js?v=37", "./js/import-mapper.js?v=35",
+  "./js/admin.js?v=35", "./js/employee.js?v=37", "./js/first-password.js?v=35",
+  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/unite-gold-transparent.png"
 ];
 
 self.addEventListener("install", event => {

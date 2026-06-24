@@ -6,8 +6,8 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>Unite Work Schedule | Nhân sự</title>
-  <link rel="manifest" href="./manifest.webmanifest" />
-<link href="./css/app.css?v=34" rel="stylesheet"/>
+<link href="./manifest.webmanifest" rel="manifest"/>
+<link href="./css/app.css?v=37" rel="stylesheet"/><link href="./css/v35.css?v=37" rel="stylesheet"/>
 </head>
 <body>
 <header class="topbar">
@@ -16,7 +16,7 @@
 <h1>Trang đăng ký lịch</h1>
 </div>
 <div class="topbar-actions">
-      <a class="btn ghost portal-nav-link" href="./portal.html" title="Mở cổng thông tin HR">Cổng thông tin</a>
+<a class="btn ghost portal-nav-link" href="./portal.html" title="Mở cổng thông tin HR">Cổng thông tin</a>
 <button aria-label="Thông báo" class="btn ghost icon-btn" id="notificationBtn" type="button">
 <span class="button-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6v-5a7 7 0 0 0-5-6.71V3a2 2 0 0 0-4 0v1.29A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"></path></svg></span>
 <span>Thông báo</span>
@@ -157,7 +157,6 @@
 <p class="eyebrow">Chọn lịch tuần</p>
 <h2 id="registerModalTitle">Chọn lịch ngày</h2>
 <p class="muted" id="registerModalMeta">Lịch làm được lưu vào bản nháp tuần; lịch bận được cập nhật trực tiếp.</p>
-<div id="registerEmployeeKind" class="register-employee-kind"></div>
 </div>
 <button class="modal-close" data-close-modal="" type="button">×</button>
 </div>
@@ -277,7 +276,6 @@
 <label>Đến giờ <input id="leaveEndTime" step="900" type="time"/></label>
 </div>
 <p class="field-hint" id="leavePeriodHint"></p>
-
 <label class="full">
         Ghi chú xin nghỉ
         <textarea id="leaveNote" placeholder="Ghi rõ lý do để admin xét duyệt" rows="3"></textarea>
@@ -371,7 +369,7 @@
 </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./js/config.js?v=32"></script>
-<script src="./js/employee.js?v=32"></script>
+<script src="./js/config.js?v=35"></script>
+<script src="./js/employee.js?v=37"></script>
 </body>
 </html>

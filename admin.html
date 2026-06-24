@@ -1,417 +1,386 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="vi">
 <head>
 <script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded-mode");</script>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Unite Work Schedule | Admin</title>
-  <meta name="theme-color" content="#741f2b" />
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="stylesheet" href="./css/app.css?v=31" />
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>Unite Work Schedule | Admin</title>
+<meta content="#741f2b" name="theme-color"/>
+<link href="./manifest.webmanifest" rel="manifest"/>
+<link href="./css/app.css?v=37" rel="stylesheet"/><link href="./css/v35.css?v=37" rel="stylesheet"/>
 </head>
 <body>
-  <header class="topbar admin">
-    <div>
-      <div class="brand-line">UNITE WORK SCHEDULE</div>
-      <h1>Trang quản trị lịch</h1>
-    </div>
-    <div class="topbar-actions">
-      <a class="btn ghost portal-return-btn" href="./portal.html" title="Cổng thông tin HR">Cổng HR</a>
-      <div class="account-menu-wrap">
-        <button id="accountMenuBtn" class="btn ghost light account-menu-btn" type="button" aria-expanded="false">
-          <span class="button-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5Z"/></svg></span>
-          <span class="account-label">Tài khoản</span>
-          <span class="chevron">▾</span>
-        </button>
-        <div id="accountMenu" class="account-menu hidden">
-          <button id="changePasswordBtn" type="button">Đổi mật khẩu</button>
-          <button id="logoutBtn" type="button" class="danger-link">Đăng xuất</button>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="container">
-    <section class="grid four">
-<div class="panel metric"><div class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm1 10.414 3.293 3.293-1.414 1.414L11 13.242V7h2Z"/></svg></div><div class="metric-copy"><span>Chờ duyệt lịch</span><b id="pendingScheduleCount">0</b></div></div>
-      <div class="panel metric"><div class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-8.4 13.4-4-4L8 11l2.6 2.6L16 8.2l1.4 1.4Z"/></svg></div><div class="metric-copy"><span>Đã duyệt tuần</span><b id="approvedWeekCount">0</b></div></div>
-      <div class="panel metric"><div class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a3 3 0 0 0-3 3v13a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Zm1 16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9h16Zm-3.293-5.293-4.5 4.5a1 1 0 0 1-1.414 0l-2.5-2.5 1.414-1.414 1.793 1.793 3.793-3.793Z"/></svg></div><div class="metric-copy"><span>Chờ duyệt nghỉ</span><b id="pendingLeaveCount">0</b></div></div>
-      <div class="panel metric"><div class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4ZM8 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm8 1c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4ZM8 14c-3.11 0-8 1.56-8 4v2h6v-3c0-1.12.44-2.12 1.21-3Z"/></svg></div><div class="metric-copy"><span>Tổng nhân sự</span><b id="employeeCount">0</b></div></div>
-    </section>
-
-    <section id="accountAdminPanel" class="panel profile-settings-panel account-creator-only hidden">
-      <div class="section-head">
-        <div>
-          <p id="accountPanelEyebrow" class="eyebrow">PHÂN QUYỀN</p>
-          <h2 id="accountPanelTitle">Tạo tài khoản cấp dưới</h2>
-          <p id="accountPanelDescription" class="muted">Vai trò và phạm vi tài khoản mới được giới hạn tự động theo cấp quản lý đang đăng nhập.</p>
-        </div>
-        <button id="refreshProfilesBtn" class="btn ghost super-admin-only hidden" type="button">Làm mới tài khoản</button>
-      </div>
-
-      <div class="account-create-card">
-        <div class="section-head compact-head">
-          <div>
-            <p class="eyebrow">Tạo tài khoản mới</p>
-            <h3>Thêm nhân sự / TTS / Leader</h3>
-            <p class="muted">Tính năng này cần deploy Supabase Edge Function <b>admin-create-user</b> để giữ service_role key an toàn.</p>
-          </div>
-        </div>
-
-        <div class="form-grid account-create-grid">
-          <label>Email đăng nhập <input id="newAccountEmail" type="email" placeholder="email@unite.vn" autocomplete="off" /></label>
-          <label>Mật khẩu tạm <input id="newAccountPassword" type="password" value="12345678" placeholder="Tối thiểu 8 ký tự" autocomplete="new-password" /></label>
-          <label>Mã nhân sự <input id="newAccountCode" type="text" placeholder="VD: TTS_LYNNHMEI" /></label>
-          <label>Họ tên hiển thị <input id="newAccountName" type="text" placeholder="Nhập đúng họ tên" /></label>
-          <label>
+<header class="topbar admin">
+<div>
+<div class="brand-line">UNITE WORK SCHEDULE</div>
+<h1>Trang quản trị lịch</h1>
+</div>
+<div class="topbar-actions">
+<a class="btn ghost portal-return-btn" href="./portal.html" title="Cổng thông tin HR">Cổng HR</a>
+<div class="account-menu-wrap">
+<button aria-expanded="false" class="btn ghost light account-menu-btn" id="accountMenuBtn" type="button">
+<span class="button-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5Z"></path></svg></span>
+<span class="account-label">Tài khoản</span>
+<span class="chevron">▾</span>
+</button>
+<div class="account-menu hidden" id="accountMenu">
+<button id="changePasswordBtn" type="button">Đổi mật khẩu</button>
+<button class="danger-link" id="logoutBtn" type="button">Đăng xuất</button>
+</div>
+</div>
+</div>
+</header>
+<main class="container">
+<section class="grid four">
+<div class="panel metric"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2Zm1 10.414 3.293 3.293-1.414 1.414L11 13.242V7h2Z"></path></svg></div><div class="metric-copy"><span>Chờ duyệt lịch</span><b id="pendingScheduleCount">0</b></div></div>
+<div class="panel metric"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-8.4 13.4-4-4L8 11l2.6 2.6L16 8.2l1.4 1.4Z"></path></svg></div><div class="metric-copy"><span>Đã duyệt tuần</span><b id="approvedWeekCount">0</b></div></div>
+<div class="panel metric"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a3 3 0 0 0-3 3v13a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Zm1 16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9h16Zm-3.293-5.293-4.5 4.5a1 1 0 0 1-1.414 0l-2.5-2.5 1.414-1.414 1.793 1.793 3.793-3.793Z"></path></svg></div><div class="metric-copy"><span>Chờ duyệt nghỉ</span><b id="pendingLeaveCount">0</b></div></div>
+<div class="panel metric"><div class="metric-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4ZM8 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm8 1c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4ZM8 14c-3.11 0-8 1.56-8 4v2h6v-3c0-1.12.44-2.12 1.21-3Z"></path></svg></div><div class="metric-copy"><span>Tổng nhân sự</span><b id="employeeCount">0</b></div></div>
+</section>
+<section class="panel profile-settings-panel account-creator-only hidden" id="accountAdminPanel">
+<div class="section-head">
+<div>
+<p class="eyebrow" id="accountPanelEyebrow">PHÂN QUYỀN</p>
+<h2 id="accountPanelTitle">Tạo tài khoản cấp dưới</h2>
+<p class="muted" id="accountPanelDescription">Vai trò và phạm vi tài khoản mới được giới hạn tự động theo cấp quản lý đang đăng nhập.</p>
+</div>
+<button class="btn ghost super-admin-only hidden" id="refreshProfilesBtn" type="button">Làm mới tài khoản</button>
+</div>
+<div class="account-create-card">
+<div class="section-head compact-head">
+<div>
+<p class="eyebrow">Tạo tài khoản mới</p>
+<h3>Thêm nhân sự / TTS / Leader</h3>
+<p class="muted">Tính năng này cần deploy Supabase Edge Function <b>admin-create-user</b> để giữ service_role key an toàn.</p>
+</div>
+</div>
+<div class="form-grid account-create-grid">
+<label>Email đăng nhập <input autocomplete="off" id="newAccountEmail" placeholder="email@unite.vn" type="email"/></label>
+<label>Mật khẩu tạm <input autocomplete="new-password" id="newAccountPassword" placeholder="Tối thiểu 8 ký tự" type="password" value="12345678"/></label>
+<label>Mã nhân sự <input id="newAccountCode" placeholder="VD: TTS_LYNNHMEI" type="text"/></label>
+<label>Họ tên hiển thị <input id="newAccountName" placeholder="Nhập đúng họ tên" type="text"/></label>
+<label>
             Vai trò
             <select id="newAccountRole">
-              <option value="SALE">SALE</option>
-              <option value="EMPLOYEE">NHÂN VIÊN</option>
-              <option value="TTS">TTS</option>
-              <option value="NVPT">NVPT</option>
-              <option value="LEADER">LEADER</option>
-              <option value="BRANCH_MANAGER">QUẢN LÝ CHI NHÁNH</option>
-              <option value="AREA_MANAGER">QUẢN LÝ KHU VỰC</option>
-              <option value="HR">HR</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="SUPER_ADMIN">SUPER_ADMIN</option>
-            </select>
-          </label>
-          <label>Phòng ban <input id="newAccountDepartment" type="text" placeholder="VD: Kinh Doanh / HR" /></label>
-          <label>Khu vực <input id="newAccountArea" type="text" placeholder="VD: Kỳ Tài" /></label>
-          <label>Chi nhánh <input id="newAccountBranch" type="text" placeholder="VD: DFC" /></label>
-          <label>Team <input id="newAccountTeam" type="text" placeholder="VD: UNITE" value="UNITE" /></label>
-          <label>Chỉ tiêu tháng <input id="newAccountTarget" type="number" min="0" max="31" value="12" /></label>
-          <label>
+<option value="SALE">SALE</option>
+<option value="EMPLOYEE">NHÂN VIÊN</option>
+<option value="TTS">TTS</option>
+<option value="NVPT">NVPT</option>
+<option value="LEADER">LEADER</option>
+<option value="BRANCH_MANAGER">QUẢN LÝ CHI NHÁNH</option>
+<option value="AREA_MANAGER">QUẢN LÝ KHU VỰC</option>
+<option value="HR">HR</option>
+<option value="ADMIN">ADMIN</option>
+<option value="SUPER_ADMIN">SUPER_ADMIN</option>
+</select>
+</label>
+<label>Phòng ban <input id="newAccountDepartment" placeholder="VD: Kinh Doanh / HR" type="text"/></label>
+<label>Khu vực <input id="newAccountArea" placeholder="VD: Kỳ Tài" type="text"/></label>
+<label>Chi nhánh <input id="newAccountBranch" placeholder="VD: DFC" type="text"/></label>
+<label>Team <input id="newAccountTeam" placeholder="VD: UNITE" type="text" value="UNITE"/></label>
+<label>Chỉ tiêu tháng <input id="newAccountTarget" max="31" min="0" type="number" value="12"/></label>
+<label>
             Trạng thái
             <select id="newAccountStatus">
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </select>
-          </label>
-        </div>
-        <div class="actions modal-actions">
-          <button id="createAccountBtn" class="btn primary" type="button">Tạo tài khoản</button>
-          <button id="clearAccountFormBtn" class="btn ghost" type="button">Xóa form</button>
-        </div>
-        <p id="createAccountMessage" class="message" aria-live="polite"></p>
-      </div>
-
-      <div class="profile-manager-launcher super-admin-only hidden">
-        <div>
-          <p class="eyebrow">Danh sách tài khoản</p>
-          <h3>Hồ sơ, vai trò & chỉ tiêu</h3>
-          <p class="muted">Danh sách được chuyển vào cửa sổ riêng để trang quản trị gọn hơn.</p>
-        </div>
-        <button id="openProfileManagerBtn" class="btn secondary" type="button">Mở quản lý hồ sơ</button>
-      </div>
-    </section>
-
-
-
-
-    <section class="panel admin-month-overview">
-      <div class="section-head admin-month-overview-head">
-        <div class="admin-month-overview-copy">
-          <p class="eyebrow">Tổng quan theo tháng</p>
-          <div class="admin-month-title-row">
-            <h2>Tổng quan lịch làm</h2>
-            <div id="adminMonthTitle" class="admin-month-title" aria-live="polite"></div>
-          </div>
-        </div>
-        <div class="admin-month-toolbar">
-          <div class="month-actions" aria-label="Điều hướng tháng">
-            <button id="adminPrevMonthBtn" class="btn secondary" type="button">← Tháng trước</button>
-            <button id="adminTodayBtn" class="btn ghost" type="button">Tháng này</button>
-            <button id="adminNextMonthBtn" class="btn secondary" type="button">Tháng sau →</button>
-          </div>
-          <button id="openExcelExportBtn" class="btn primary excel-launch-btn" type="button">Tải bảng chấm công tháng</button>
-        </div>
-      </div>
-      <div class="admin-scope-toolbar">
-        <label>
+<option value="active">active</option>
+<option value="inactive">inactive</option>
+</select>
+</label>
+</div>
+<div class="actions modal-actions">
+<button class="btn primary" id="createAccountBtn" type="button">Tạo tài khoản</button>
+<button class="btn ghost" id="clearAccountFormBtn" type="button">Xóa form</button>
+</div>
+<p aria-live="polite" class="message" id="createAccountMessage"></p>
+</div>
+<div class="profile-manager-launcher super-admin-only hidden">
+<div>
+<p class="eyebrow">Danh sách tài khoản</p>
+<h3>Hồ sơ, vai trò &amp; chỉ tiêu</h3>
+<p class="muted">Danh sách được chuyển vào cửa sổ riêng để trang quản trị gọn hơn.</p>
+</div>
+<button class="btn secondary" id="openProfileManagerBtn" type="button">Mở quản lý hồ sơ</button>
+</div>
+</section>
+<section class="panel admin-month-overview">
+<div class="section-head admin-month-overview-head">
+<div class="admin-month-overview-copy">
+<p class="eyebrow">Tổng quan theo tháng</p>
+<div class="admin-month-title-row">
+<h2>Tổng quan lịch làm</h2>
+<div aria-live="polite" class="admin-month-title" id="adminMonthTitle"></div>
+</div>
+</div>
+<div class="admin-month-toolbar">
+<div aria-label="Điều hướng tháng" class="month-actions">
+<button class="btn secondary" id="adminPrevMonthBtn" type="button">← Tháng trước</button>
+<button class="btn ghost" id="adminTodayBtn" type="button">Tháng này</button>
+<button class="btn secondary" id="adminNextMonthBtn" type="button">Tháng sau →</button>
+</div>
+<button class="btn primary excel-launch-btn" id="openExcelExportBtn" type="button">Tải bảng chấm công tháng</button>
+</div>
+</div>
+<div class="admin-scope-toolbar">
+<label>
           Khu vực
           <select id="adminAreaFilter"><option value="">Tất cả khu vực</option></select>
-        </label>
-        <label>
+</label>
+<label>
           Chi nhánh
           <select id="adminBranchFilter"><option value="">Tất cả chi nhánh</option></select>
-        </label>
-        <label>
+</label>
+<label>
           Team
           <select id="adminTeamFilter"><option value="">Tất cả team</option></select>
-        </label>
-        <div id="adminScopeNote" class="admin-scope-note">Đang tải phạm vi dữ liệu...</div>
-      </div>
-      <div class="calendar-legend admin-legend">
-        <span><i class="dot dot-pending"></i> Chờ duyệt</span>
-        <span><i class="dot dot-approved"></i> Đã duyệt</span>
-        <span><i class="dot dot-off"></i> OFF</span>
-      </div>
-      <div class="calendar-shell admin-calendar-shell">
-        <div class="calendar-weekheads">
-          <div>T2</div><div>T3</div><div>T4</div><div>T5</div><div>T6</div><div>T7</div><div>CN</div>
-        </div>
-        <div id="adminMonthSummary" class="admin-month-calendar"></div>
-      </div>
-      <div class="admin-inline-filter">
-        <label>
+</label>
+<div class="admin-scope-note" id="adminScopeNote">Đang tải phạm vi dữ liệu...</div>
+</div>
+<div class="calendar-legend admin-legend">
+<span><i class="dot dot-pending"></i> Chờ duyệt</span>
+<span><i class="dot dot-approved"></i> Đã duyệt</span>
+<span><i class="dot dot-off"></i> OFF</span>
+</div>
+<div class="calendar-shell admin-calendar-shell">
+<div class="calendar-weekheads">
+<div>T2</div><div>T3</div><div>T4</div><div>T5</div><div>T6</div><div>T7</div><div>CN</div>
+</div>
+<div class="admin-month-calendar" id="adminMonthSummary"></div>
+</div>
+<div class="admin-inline-filter">
+<label>
           Thứ 2 của tuần để lọc bảng bên dưới
-          <input id="adminWeekStart" type="date" />
-        </label>
-        <button id="adminLoadBtn" class="btn secondary" type="button">Tải dữ liệu bảng</button>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Xét duyệt lịch</p>
-          <h2>Yêu cầu đăng ký lịch đang chờ</h2>
-        </div>
-        <div class="actions">
-          <button id="approveSelectedBtn" class="btn primary">Duyệt đã chọn</button>
-          <button id="rejectSelectedBtn" class="btn danger">Từ chối đã chọn</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th><input id="checkAllSchedule" type="checkbox" /></th>
-              <th>Nhân sự</th>
-              <th>Loại</th>
-              <th>Khu vực</th>
-              <th>Team</th>
-              <th>Ngày</th>
-              <th>Ca</th>
-              <th>Ghi chú</th>
-            </tr>
-          </thead>
-          <tbody id="pendingScheduleTable"></tbody>
-        </table>
-      </div>
-      <p id="adminScheduleMessage" class="message" aria-live="polite"></p>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Xét duyệt nghỉ</p>
-          <h2>Yêu cầu xin nghỉ đang chờ</h2>
-        </div>
-        <div class="actions">
-          <button id="approveLeaveSelectedBtn" class="btn primary">Duyệt nghỉ đã chọn</button>
-          <button id="rejectLeaveSelectedBtn" class="btn danger">Từ chối nghỉ đã chọn</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th><input id="checkAllLeave" type="checkbox" /></th>
-              <th>Nhân sự</th>
-              <th>Khu vực</th>
-              <th>Team</th>
-              <th>Ngày nghỉ</th>
-              <th>Ca</th>
-              <th>Lý do</th>
-              <th>Cảnh báo</th>
-              <th>Ghi chú</th>
-            </tr>
-          </thead>
-          <tbody id="pendingLeaveTable"></tbody>
-        </table>
-      </div>
-      <p id="adminLeaveMessage" class="message" aria-live="polite"></p>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Lịch chính thức</p>
-          <h2>Danh sách lịch trong tuần</h2>
-        </div>
-        <button id="exportCsvBtn" class="btn ghost">Tải CSV tuần</button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Nhân sự</th>
-              <th>Loại</th>
-              <th>Khu vực</th>
-              <th>Team</th>
-              <th>Ngày</th>
-              <th>Ca</th>
-              <th>Trạng thái</th>
-            </tr>
-          </thead>
-          <tbody id="allScheduleTable"></tbody>
-        </table>
-      </div>
-    </section>
-
-
-<section id="dangerZonePanel" class="panel danger-zone super-admin-only hidden">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Vùng nguy hiểm</p>
-          <h2>Xóa toàn bộ lịch làm</h2>
-          <p class="muted">Chỉ SUPER_ADMIN được reset dữ liệu lịch. Hệ thống sẽ gửi thông báo cho toàn bộ TTS/NVPT trước khi xóa.</p>
-        </div>
-        <button id="deleteAllScheduleBtn" class="btn danger" type="button">Xóa hết lịch làm</button>
-      </div>
-    </section>
-  </main>
-
-
-
-  <div id="profileManagerModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-profile-manager></div>
-    <div class="uws-modal-card profile-manager-modal-card">
-      <div class="modal-head profile-manager-head">
-        <div>
-          <p class="eyebrow">SUPER ADMIN</p>
-          <h2>Quản lý hồ sơ nhân sự</h2>
-          <p class="muted">Tìm theo mã, họ tên, email, vai trò, phòng ban, khu vực, chi nhánh hoặc team rồi chỉnh sửa trực tiếp.</p>
-        </div>
-        <button class="modal-close" type="button" data-close-profile-manager aria-label="Đóng">×</button>
-      </div>
-      <div class="profile-manager-toolbar">
-        <label class="profile-search-field">
-          <span>Tìm kiếm tài khoản</span>
-          <input id="profileSearchInput" type="search" placeholder="Nhập mã, họ tên, email, khu vực, chi nhánh, team..." autocomplete="off" />
-        </label>
-        <button id="profileSearchBtn" class="btn secondary" type="button">Tìm kiếm</button>
-        <button id="refreshProfilesModalBtn" class="btn ghost" type="button">Làm mới</button>
-      </div>
-      <div id="profileSearchSummary" class="profile-search-summary"></div>
-      <div class="table-wrap profile-settings-wrap profile-manager-table-wrap">
-        <table class="profile-settings-table">
-          <thead>
-            <tr>
-              <th>Mã</th><th>Họ tên hiển thị</th><th>Email</th><th>Vai trò</th><th>Phòng ban</th><th>Khu vực</th><th>Chi nhánh</th><th>Team</th><th>Chỉ tiêu tháng</th><th>Trạng thái</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="profileSettingsTable"></tbody>
-        </table>
-      </div>
-      <p id="profileSettingsMessage" class="message" aria-live="polite"></p>
-    </div>
-  </div>
-
-  <div id="excelExportModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-excel-export></div>
-    <div class="uws-modal-card excel-export-modal-card">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">Báo cáo tháng</p>
-          <h2>Tải lịch làm Excel</h2>
-          <p class="muted">File gồm lịch chi tiết, bảng tổng hợp nhân sự và danh sách xin nghỉ.</p>
-        </div>
-        <button class="modal-close" type="button" data-close-excel-export aria-label="Đóng">×</button>
-      </div>
-      <div class="form-grid excel-export-grid">
-        <label>Tháng báo cáo <input id="excelExportMonth" type="month" /></label>
-        <label>Khu vực <select id="excelExportArea"><option value="">Tất cả khu vực</option></select></label>
-        <label>Chi nhánh <select id="excelExportBranch"><option value="">Tất cả chi nhánh</option></select></label>
-        <label>Team <select id="excelExportTeam"><option value="">Tất cả team</option></select></label>
-        <label>Trạng thái lịch
+          <input id="adminWeekStart" type="date"/>
+</label>
+<button class="btn secondary" id="adminLoadBtn" type="button">Tải dữ liệu bảng</button>
+</div>
+</section>
+<section class="panel">
+<div class="section-head">
+<div>
+<p class="eyebrow">Xét duyệt lịch</p>
+<h2>Yêu cầu đăng ký lịch đang chờ</h2>
+</div>
+<div class="actions">
+<button class="btn primary" id="approveSelectedBtn">Duyệt đã chọn</button>
+<button class="btn danger" id="rejectSelectedBtn">Từ chối đã chọn</button>
+</div>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th><input id="checkAllSchedule" type="checkbox"/></th>
+<th>Nhân sự</th>
+<th>Loại</th>
+<th>Khu vực</th>
+<th>Team</th>
+<th>Ngày</th>
+<th>Ca</th>
+<th>Ghi chú</th>
+</tr>
+</thead>
+<tbody id="pendingScheduleTable"></tbody>
+</table>
+</div>
+<p aria-live="polite" class="message" id="adminScheduleMessage"></p>
+</section>
+<section class="panel">
+<div class="section-head">
+<div>
+<p class="eyebrow">Xét duyệt nghỉ</p>
+<h2>Yêu cầu xin nghỉ đang chờ</h2>
+</div>
+<div class="actions">
+<button class="btn primary" id="approveLeaveSelectedBtn">Duyệt nghỉ đã chọn</button>
+<button class="btn danger" id="rejectLeaveSelectedBtn">Từ chối nghỉ đã chọn</button>
+</div>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th><input id="checkAllLeave" type="checkbox"/></th>
+<th>Nhân sự</th>
+<th>Khu vực</th>
+<th>Team</th>
+<th>Ngày nghỉ</th>
+<th>Ca</th>
+<th>Lý do</th>
+<th>Cảnh báo</th>
+<th>Ghi chú</th>
+</tr>
+</thead>
+<tbody id="pendingLeaveTable"></tbody>
+</table>
+</div>
+<p aria-live="polite" class="message" id="adminLeaveMessage"></p>
+</section>
+<section class="panel">
+<div class="section-head">
+<div>
+<p class="eyebrow">Lịch chính thức</p>
+<h2>Danh sách lịch trong tuần</h2>
+</div>
+<button class="btn ghost" id="exportCsvBtn">Tải CSV tuần</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Nhân sự</th>
+<th>Loại</th>
+<th>Khu vực</th>
+<th>Team</th>
+<th>Ngày</th>
+<th>Ca</th>
+<th>Trạng thái</th>
+</tr>
+</thead>
+<tbody id="allScheduleTable"></tbody>
+</table>
+</div>
+</section>
+<section class="panel danger-zone super-admin-only hidden" id="dangerZonePanel">
+<div class="section-head">
+<div>
+<p class="eyebrow">Vùng nguy hiểm</p>
+<h2>Xóa toàn bộ lịch làm</h2>
+<p class="muted">Chỉ SUPER_ADMIN được reset dữ liệu lịch. Hệ thống sẽ gửi thông báo cho toàn bộ TTS/NVPT trước khi xóa.</p>
+</div>
+<button class="btn danger" id="deleteAllScheduleBtn" type="button">Xóa hết lịch làm</button>
+</div>
+</section>
+</main>
+<div class="uws-modal hidden" id="profileManagerModal">
+<div class="uws-modal-backdrop" data-close-profile-manager=""></div>
+<div class="uws-modal-card profile-manager-modal-card">
+<div class="modal-head profile-manager-head">
+<div>
+<p class="eyebrow">SUPER ADMIN</p>
+<h2>Quản lý hồ sơ nhân sự</h2>
+<p class="muted">Tìm theo mã, họ tên, email, vai trò, phòng ban, khu vực, chi nhánh hoặc team rồi chỉnh sửa trực tiếp.</p>
+</div>
+<button aria-label="Đóng" class="modal-close" data-close-profile-manager="" type="button">×</button>
+</div>
+<div class="profile-manager-toolbar">
+<label class="profile-search-field">
+<span>Tìm kiếm tài khoản</span>
+<input autocomplete="off" id="profileSearchInput" placeholder="Nhập mã, họ tên, email, khu vực, chi nhánh, team..." type="search"/>
+</label>
+<button class="btn secondary" id="profileSearchBtn" type="button">Tìm kiếm</button>
+<button class="btn ghost" id="refreshProfilesModalBtn" type="button">Làm mới</button>
+</div>
+<div class="profile-search-summary" id="profileSearchSummary"></div>
+<div class="table-wrap profile-settings-wrap profile-manager-table-wrap">
+<table class="profile-settings-table">
+<thead>
+<tr>
+<th>Mã</th><th>Họ tên hiển thị</th><th>Email</th><th>Vai trò</th><th>Phòng ban</th><th>Khu vực</th><th>Chi nhánh</th><th>Team</th><th>Chỉ tiêu tháng</th><th>Trạng thái</th><th></th>
+</tr>
+</thead>
+<tbody id="profileSettingsTable"></tbody>
+</table>
+</div>
+<p aria-live="polite" class="message" id="profileSettingsMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="excelExportModal">
+<div class="uws-modal-backdrop" data-close-excel-export=""></div>
+<div class="uws-modal-card excel-export-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Báo cáo tháng</p>
+<h2>Tải lịch làm Excel</h2>
+<p class="muted">File gồm lịch chi tiết, bảng tổng hợp nhân sự và danh sách xin nghỉ.</p>
+</div>
+<button aria-label="Đóng" class="modal-close" data-close-excel-export="" type="button">×</button>
+</div>
+<div class="form-grid excel-export-grid">
+<label>Tháng báo cáo <input id="excelExportMonth" type="month"/></label>
+<label>Khu vực <select id="excelExportArea"><option value="">Tất cả khu vực</option></select></label>
+<label>Chi nhánh <select id="excelExportBranch"><option value="">Tất cả chi nhánh</option></select></label>
+<label>Team <select id="excelExportTeam"><option value="">Tất cả team</option></select></label>
+<label>Trạng thái lịch
           <select id="excelExportStatus">
-            <option value="approved">Chỉ lịch đã duyệt</option>
-            <option value="all">Đã duyệt + chờ duyệt</option>
-          </select>
-        </label>
-      </div>
-      <div class="excel-export-note" id="excelExportScopeNote"></div>
-      <div class="actions modal-actions">
-        <button id="downloadExcelBtn" class="btn primary" type="button">Tạo và tải file Excel</button>
-        <button class="btn ghost" type="button" data-close-excel-export>Hủy</button>
-      </div>
-      <p id="excelExportMessage" class="message" aria-live="polite"></p>
-    </div>
-  </div>
-
-  <div id="deleteScheduleModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-delete-modal></div>
-    <div class="uws-modal-card delete-modal-card">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">Xác nhận bảo mật</p>
-          <h2>Xóa toàn bộ lịch làm?</h2>
-          <p class="muted">Thao tác này sẽ xóa tất cả lịch làm và yêu cầu xin nghỉ liên quan. Trước khi xóa, hệ thống sẽ gửi thông báo đến toàn bộ tài khoản TTS/NVPT đang hoạt động.</p>
-        </div>
-        <button class="modal-close" type="button" data-close-delete-modal>×</button>
-      </div>
-
-      <div class="delete-warning-box">
-        <b>Lưu ý:</b>
-        <span>Thao tác không thể hoàn tác. Để xác nhận, admin phải nhập đúng mật khẩu đăng nhập hiện tại.</span>
-      </div>
-
-      <label class="full">
+<option value="approved">Chỉ lịch đã duyệt</option>
+<option value="all">Đã duyệt + chờ duyệt</option>
+</select>
+</label>
+</div>
+<div class="excel-export-note" id="excelExportScopeNote"></div>
+<div class="actions modal-actions">
+<button class="btn primary" id="downloadExcelBtn" type="button">Tạo và tải file Excel</button>
+<button class="btn ghost" data-close-excel-export="" type="button">Hủy</button>
+</div>
+<p aria-live="polite" class="message" id="excelExportMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="deleteScheduleModal">
+<div class="uws-modal-backdrop" data-close-delete-modal=""></div>
+<div class="uws-modal-card delete-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Xác nhận bảo mật</p>
+<h2>Xóa toàn bộ lịch làm?</h2>
+<p class="muted">Thao tác này sẽ xóa tất cả lịch làm và yêu cầu xin nghỉ liên quan. Trước khi xóa, hệ thống sẽ gửi thông báo đến toàn bộ tài khoản TTS/NVPT đang hoạt động.</p>
+</div>
+<button class="modal-close" data-close-delete-modal="" type="button">×</button>
+</div>
+<div class="delete-warning-box">
+<b>Lưu ý:</b>
+<span>Thao tác không thể hoàn tác. Để xác nhận, admin phải nhập đúng mật khẩu đăng nhập hiện tại.</span>
+</div>
+<label class="full">
         Nhập lại mật khẩu admin
-        <input id="deleteConfirmPassword" type="password" placeholder="Nhập mật khẩu để xác nhận xóa" autocomplete="current-password" />
-      </label>
-
-      <div class="actions modal-actions">
-        <button id="confirmDeleteAllScheduleBtn" class="btn danger" type="button">Xác nhận xóa</button>
-        <button class="btn ghost" type="button" data-close-delete-modal>Hủy</button>
-      </div>
-
-      <p id="deleteScheduleMessage" class="message" aria-live="polite"></p>
-    </div>
-  </div>
-
-
-  <div id="changePasswordModal" class="uws-modal hidden">
-    <div class="uws-modal-backdrop" data-close-password-modal></div>
-    <div class="uws-modal-card password-modal-card">
-      <div class="modal-head">
-        <div>
-          <p class="eyebrow">Bảo mật tài khoản</p>
-          <h2>Đổi mật khẩu</h2>
-          <p class="muted">Leader/Admin nhập mật khẩu hiện tại để xác nhận trước khi đổi mật khẩu mới.</p>
-        </div>
-        <button class="modal-close" type="button" data-close-password-modal>×</button>
-      </div>
-
-      <div class="form-stack password-form">
-        <label>
+        <input autocomplete="current-password" id="deleteConfirmPassword" placeholder="Nhập mật khẩu để xác nhận xóa" type="password"/>
+</label>
+<div class="actions modal-actions">
+<button class="btn danger" id="confirmDeleteAllScheduleBtn" type="button">Xác nhận xóa</button>
+<button class="btn ghost" data-close-delete-modal="" type="button">Hủy</button>
+</div>
+<p aria-live="polite" class="message" id="deleteScheduleMessage"></p>
+</div>
+</div>
+<div class="uws-modal hidden" id="changePasswordModal">
+<div class="uws-modal-backdrop" data-close-password-modal=""></div>
+<div class="uws-modal-card password-modal-card">
+<div class="modal-head">
+<div>
+<p class="eyebrow">Bảo mật tài khoản</p>
+<h2>Đổi mật khẩu</h2>
+<p class="muted">Leader/Admin nhập mật khẩu hiện tại để xác nhận trước khi đổi mật khẩu mới.</p>
+</div>
+<button class="modal-close" data-close-password-modal="" type="button">×</button>
+</div>
+<div class="form-stack password-form">
+<label>
           Mật khẩu hiện tại
-          <input id="currentPasswordInput" type="password" placeholder="Nhập mật khẩu đang dùng" autocomplete="current-password" />
-        </label>
-        <label>
+          <input autocomplete="current-password" id="currentPasswordInput" placeholder="Nhập mật khẩu đang dùng" type="password"/>
+</label>
+<label>
           Mật khẩu mới
-          <input id="newPasswordInput" type="password" placeholder="Tối thiểu 8 ký tự" autocomplete="new-password" />
-        </label>
-        <label>
+          <input autocomplete="new-password" id="newPasswordInput" placeholder="Tối thiểu 8 ký tự" type="password"/>
+</label>
+<label>
           Nhập lại mật khẩu mới
-          <input id="confirmNewPasswordInput" type="password" placeholder="Nhập lại mật khẩu mới" autocomplete="new-password" />
-        </label>
-      </div>
-
-      <div class="password-rules">
-        <span>Mật khẩu mới nên có ít nhất 8 ký tự.</span>
-        <span>Sau khi đổi thành công, có thể tiếp tục dùng phiên hiện tại hoặc đăng xuất đăng nhập lại.</span>
-      </div>
-
-      <div class="actions modal-actions">
-        <button id="submitChangePasswordBtn" class="btn primary" type="button">Cập nhật mật khẩu</button>
-        <button class="btn ghost" type="button" data-close-password-modal>Hủy</button>
-      </div>
-
-      <p id="changePasswordMessage" class="message" aria-live="polite"></p>
-    </div>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="./js/config.js?v=31"></script>
-  <script src="./js/admin.js?v=31"></script>
+          <input autocomplete="new-password" id="confirmNewPasswordInput" placeholder="Nhập lại mật khẩu mới" type="password"/>
+</label>
+</div>
+<div class="password-rules">
+<span>Mật khẩu mới nên có ít nhất 8 ký tự.</span>
+<span>Sau khi đổi thành công, có thể tiếp tục dùng phiên hiện tại hoặc đăng xuất đăng nhập lại.</span>
+</div>
+<div class="actions modal-actions">
+<button class="btn primary" id="submitChangePasswordBtn" type="button">Cập nhật mật khẩu</button>
+<button class="btn ghost" data-close-password-modal="" type="button">Hủy</button>
+</div>
+<p aria-live="polite" class="message" id="changePasswordMessage"></p>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="./js/config.js?v=35"></script>
+<script src="./js/admin.js?v=35"></script>
 </body>
 </html>
