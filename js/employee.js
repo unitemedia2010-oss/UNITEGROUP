@@ -1693,7 +1693,7 @@ async function submitLeave() {
 
   if (error) {
     const migrationHint = /leave_period|leave_start_time|leave_end_time|column/i.test(error.message || "")
-      ? " Hãy chạy file supabase/01_fresh_database.sql trong SQL Editor."
+      ? " Hãy chạy file supabase/migrations/002_weekly_flexible_leave.sql trong SQL Editor."
       : "";
     showMessage(leaveMessage, `Lỗi xin nghỉ: ${error.message}.${migrationHint}`, "err");
     showToast(`Lỗi xin nghỉ: ${error.message}`, "err");

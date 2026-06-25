@@ -1,10 +1,10 @@
-const CACHE_NAME = "unite-hr-portal-v37";
+const CACHE_NAME = "unite-hr-portal-v40.1";
 const APP_SHELL = [
   "./", "./index.html", "./portal.html", "./admin.html", "./employee.html", "./change-password.html",
-  "./css/app.css?v=37", "./css/v35.css?v=37", "./css/v36.css?v=37", "./js/config.js?v=35", "./js/auth.js?v=35",
-  "./js/portal.js?v=37", "./js/import-mapper.js?v=35",
-  "./js/admin.js?v=35", "./js/employee.js?v=37", "./js/first-password.js?v=35",
-  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/unite-gold-transparent.png"
+  "./css/app.css?v=41", "./css/v35.css?v=35", "./css/v36.css?v=36", "./css/v37.css?v=38", "./css/v39.css?v=39", "./css/v40.css?v=44",
+  "./js/config.js?v=40", "./js/auth.js?v=35", "./js/portal.js?v=43", "./js/import-mapper.js?v=40",
+  "./js/admin.js?v=35", "./js/employee.js?v=35", "./js/first-password.js?v=35",
+  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/unite-gold.png"
 ];
 
 self.addEventListener("install", event => {
@@ -38,7 +38,6 @@ self.addEventListener("notificationclick", event => {
     return clients.openWindow(target);
   }));
 });
-
 
 self.addEventListener("push", event => {
   let payload = { title: "Unite HR Portal", body: "Bạn có thông báo mới." };

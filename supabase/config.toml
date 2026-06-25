@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.hr-bulk-create-users]
 verify_jwt = false
+
+[functions.employee-document-sync]
+verify_jwt = false

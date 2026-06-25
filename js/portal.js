@@ -15,7 +15,7 @@
     orgUnits: [],
     importResult: null,
     employeePage: 1,
-    employeePageSize: 50,
+    employeePageSize: Number.MAX_SAFE_INTEGER,
     employeeSmartFilter: {},
     activeEmployee: null,
     activeEmployeePrivate: null,
@@ -35,7 +35,15 @@
     employeeVisibleColumns: new Set(),
     employeeColumnDraft: new Set(),
     employeeColumnPreset: "operations",
-    organizationExpanded: true
+    organizationExpanded: true,
+    employeeDocuments: [],
+    employeeDocumentLinks: new Map(),
+    documentSettings: null,
+    activeDocument: null,
+    activeEmployeeDocuments: [],
+    documentWorkerStatus: null,
+    documentScanJob: null,
+    documentJobPollTimer: null
   };
 
   const CASE_STATUS_LABELS = {
@@ -50,7 +58,7 @@
   const EMPLOYEE_STATUS_LABELS = { active: "Đang làm", resigned: "Đã nghỉ", reserved: "Bảo lưu", unknown: "Chưa rõ" };
   const PAGE_TITLES = {
     dashboard: "Tổng quan", announcements: "Trung tâm thông báo", cases: "Yêu cầu & báo cáo HR", "my-profile": "Hồ sơ của tôi",
-    employees: "Danh sách nhân sự", organization: "Cây tổ chức", import: "Nhập dữ liệu Excel", schedule: "Lịch làm & chấm công"
+    employees: "Danh sách nhân sự", organization: "Cây tổ chức", documents: "Hồ sơ tài liệu", import: "Nhập dữ liệu Excel", schedule: "Lịch làm & chấm công"
   };
 
   function $(id) { return document.getElementById(id); }
@@ -139,6 +147,8 @@
     host.appendChild(item);
     setTimeout(() => { item.style.opacity = "0"; setTimeout(() => item.remove(), 250); }, duration);
   }
+
+  function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
   function setLoading(button, loading, text = "Đang xử lý...") {
     if (!button) return;
@@ -271,7 +281,8 @@
     loadEmployeeColumnPreferences();
     applyProfileUI();
     bindEvents();
-    await Promise.allSettled([loadDashboard(), loadAnnouncements(), loadCases(), isHR() ? loadHrDirectory() : Promise.resolve()]);
+    bindEmployeeGridInteractions();
+    await Promise.allSettled([loadDashboard(), loadAnnouncements(), loadCases(), isHR() ? loadHrDirectory() : Promise.resolve(), isHR() ? loadEmployeeDocumentReviewBadge() : Promise.resolve()]);
     subscribeRealtime();
     registerServiceWorker();
   }
@@ -285,7 +296,7 @@
     $("dashboardGreeting").textContent = `Xin chào, ${profile.full_name || "bạn"}`;
     $("dashboardRolePill").textContent = roleLabel(profile.role_type);
     if ($("employeeColumnView")) $("employeeColumnView").value = state.employeeColumnPreset || (window.innerWidth <= 820 ? "operations" : (isHR() ? "full" : "operations"));
-    if ($("employeePageSize")) $("employeePageSize").value = "50";
+    if ($("employeePageSize")) $("employeePageSize").value = "all";
 
     document.querySelectorAll(".hr-only,.hr-only-control,.hr-only-page").forEach(el => el.classList.toggle("hidden", !isHR()));
     const roleRank = { SALE:10, EMPLOYEE:10, TTS:10, NVPT:10, LEADER:20, BRANCH_MANAGER:30, AREA_MANAGER:40, HR:50, ADMIN:60, SUPER_ADMIN:70 };
@@ -295,7 +306,7 @@
       option.disabled = profile.role_type === "SUPER_ADMIN" ? targetRank > callerRank : targetRank >= callerRank;
     });
     document.querySelectorAll(".manager-nav,.manager-card,.manager-page,.manager-filter").forEach(el => el.classList.toggle("hidden", !isManager()));
-    if (!isHR() && state.page === "import") goToPage("dashboard");
+    if (!isHR() && ["import","documents"].includes(state.page)) goToPage("dashboard");
     if (!isManager() && ["employees", "organization"].includes(state.page)) goToPage("dashboard");
   }
 
@@ -312,6 +323,7 @@
     $("portalChangePasswordBtn")?.addEventListener("click", openPortalPasswordModal);
     $("portalSubmitPasswordBtn")?.addEventListener("click", changePortalPassword);
     document.querySelectorAll("[data-close-portal-password]").forEach(el => el.addEventListener("click", closePortalPasswordModal));
+    $("portalRefreshBtn")?.addEventListener("click", refreshCurrentPage);
     $("portalInboxBtn")?.addEventListener("click", () => goToPage("announcements"));
     $("openScheduleBtn")?.addEventListener("click", () => goToPage("schedule"));
     $("reloadScheduleFrameBtn")?.addEventListener("click", () => loadScheduleFrame(true));
@@ -348,13 +360,14 @@
     $("saveCaseAssignmentBtn")?.addEventListener("click", saveCaseAssignment);
     ["caseSearch","caseStatusFilter","casePriorityFilter","caseAreaFilter"].forEach(id => $(id)?.addEventListener("input", renderCases));
 
-    ["employeeSearch","employeeCodeGroupFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeBankFilter","employeeBankDataFilter","employeeQualityFilter","employeeSortSelect","employeeGroupSelect"].forEach(id => $(id)?.addEventListener("input", () => { state.employeePage = 1; renderEmployees(); }));
+    ["employeeSearch","employeeCodeGroupFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeBankFilter","employeeBankDataFilter","employeePhotoFilter","employeeQualityFilter","employeeSortSelect","employeeGroupSelect"].forEach(id => $(id)?.addEventListener("input", () => { state.employeePage = 1; renderEmployees(); }));
     $("employeeStatusFilter")?.addEventListener("change", () => { rebuildEmployeeHierarchyFilters("status"); state.employeePage = 1; renderEmployees(); });
     $("employeeDepartmentFilter")?.addEventListener("change", () => { rebuildEmployeeHierarchyFilters("department"); state.employeePage = 1; renderEmployees(); });
     $("employeeAreaFilter")?.addEventListener("change", () => { rebuildEmployeeHierarchyFilters("area"); state.employeePage = 1; renderEmployees(); });
     $("employeeBranchFilter")?.addEventListener("change", () => { rebuildEmployeeHierarchyFilters("branch"); state.employeePage = 1; renderEmployees(); });
     $("employeeTeamFilter")?.addEventListener("change", () => { state.employeePage = 1; renderEmployees(); });
     $("exportFilteredEmployeesBtn")?.addEventListener("click", exportFilteredEmployees);
+    $("printFilteredEmployeesBtn")?.addEventListener("click", printFilteredEmployees);
     $("employeeColumnView")?.addEventListener("change", event => {
       const preset = event.target.value || "operations";
       if (preset !== "custom") applyEmployeeColumnPreset(preset, { save: true, render: true });
@@ -367,7 +380,7 @@
     $("employeeColumnResetBtn")?.addEventListener("click", () => applyEmployeeColumnPresetToDraft($("employeeColumnPresetSelect")?.value || "operations"));
     $("applyEmployeeColumnsBtn")?.addEventListener("click", applyEmployeeColumnSelection);
     $("employeePageSize")?.addEventListener("change", event => {
-      state.employeePageSize = event.target.value === "all" ? Number.MAX_SAFE_INTEGER : Number(event.target.value || 50);
+      state.employeePageSize = event.target.value === "all" ? Number.MAX_SAFE_INTEGER : Number(event.target.value || Number.MAX_SAFE_INTEGER);
       state.employeePage = 1;
       renderEmployees();
     });
@@ -402,6 +415,16 @@
       $(id)?.addEventListener("change", () => populateAddEmployeeDatalists(level));
     });
     $("createEmployeeBtn")?.addEventListener("click", createEmployee);
+
+    $("refreshEmployeeDocumentsBtn")?.addEventListener("click", loadEmployeeDocumentsPage);
+    $("saveDocumentSettingsBtn")?.addEventListener("click", saveDocumentSettings);
+    $("scanAllEmployeeDocumentsBtn")?.addEventListener("click", scanAllEmployeeDocumentFolders);
+    document.querySelectorAll("[data-document-scan]").forEach(button => button.addEventListener("click", () => scanEmployeeDocumentFolder(button.dataset.documentScan)));
+    $("cancelDocumentScanBtn")?.addEventListener("click", cancelPendingDocumentScan);
+    ["documentSearchInput","documentTypeFilter","documentStatusFilter","documentSourceFilter"].forEach(id => $(id)?.addEventListener("input", renderEmployeeDocuments));
+    $("employeeDocumentTable")?.addEventListener("click", handleEmployeeDocumentTableClick);
+    document.querySelectorAll("[data-close-document-link]").forEach(el => el.addEventListener("click", closeDocumentLinkModal));
+    $("saveDocumentLinkBtn")?.addEventListener("click", saveManualDocumentLink);
 
     $("bulkCreateAccountsBtn")?.addEventListener("click", openBulkAccountModal);
     document.querySelectorAll("[data-close-bulk-account]").forEach(el => el.addEventListener("click", () => closeModal("bulkAccountModal")));
@@ -508,7 +531,7 @@
   }
 
   function goToPage(page) {
-    if (page === "import" && !isHR()) return;
+    if (["import","documents"].includes(page) && !isHR()) return;
     if (["employees","organization"].includes(page) && !isManager()) return;
     state.page = page;
     document.querySelectorAll(".portal-page-section").forEach(el => el.classList.toggle("active", el.id === `page-${page}`));
@@ -521,7 +544,28 @@
     if (page === "my-profile") loadMyProfile();
     if (page === "employees") loadEmployees();
     if (page === "organization") loadOrganization();
+    if (page === "documents") {
+      loadEmployeeDocumentsPage();
+      startDocumentJobPolling();
+    } else {
+      stopDocumentJobPolling();
+    }
     if (page === "schedule") loadScheduleFrame();
+  }
+
+  async function refreshCurrentPage() {
+    const button = $("portalRefreshBtn");
+    setLoading(button, true, "Đang tải...");
+    try {
+      if (state.page === "dashboard") await loadDashboard();
+      else if (state.page === "announcements") await loadAnnouncements();
+      else if (state.page === "cases") await loadCases();
+      else if (state.page === "my-profile") await loadMyProfile();
+      else if (state.page === "employees") await loadEmployees();
+      else if (state.page === "organization") await loadOrganization();
+      else if (state.page === "documents") await loadEmployeeDocumentsPage();
+      else if (state.page === "schedule") loadScheduleFrame(true);
+    } finally { setLoading(button, false); }
   }
 
   function loadScheduleFrame(force = false) {
@@ -1049,6 +1093,97 @@
     }
   }
 
+  function buildEmployeeDocumentLinkMap(rows) {
+    const map = new Map();
+    const typeRank = { portrait: 1, citizen_id_combined: 2, citizen_id_front: 3, citizen_id_back: 4, employee_dossier: 5, contract: 6, certificate: 7, other: 8 };
+    const statusRank = { verified: 0, pending: 1, unmatched: 2, rejected: 3 };
+    const labels = {
+      portrait: ["Chân dung", "Ảnh"],
+      citizen_id_combined: ["CCCD", "CCCD"],
+      citizen_id_front: ["CCCD mặt trước", "Trước"],
+      citizen_id_back: ["CCCD mặt sau", "Sau"],
+      employee_dossier: ["Hồ sơ", "Hồ sơ"],
+      contract: ["Hợp đồng", "HĐ"],
+      certificate: ["Chứng chỉ", "CC"],
+      other: ["Tài liệu", "File"]
+    };
+    const isPortraitDocument = row => row.document_type === "portrait" || row.source_kind === "portrait";
+    const grouped = new Map();
+    (rows || []).forEach(row => {
+      if (!row.employee_id || !["verified","pending"].includes(row.verification_status)) return;
+      if (!grouped.has(row.employee_id)) grouped.set(row.employee_id, []);
+      grouped.get(row.employee_id).push(row);
+    });
+    grouped.forEach((documents, employeeId) => {
+      documents.sort((a,b) =>
+        Number(statusRank[a.verification_status] ?? 9) - Number(statusRank[b.verification_status] ?? 9) ||
+        Number(!a.is_primary) - Number(!b.is_primary) ||
+        Number(typeRank[a.document_type] ?? 99) - Number(typeRank[b.document_type] ?? 99) ||
+        String(b.updated_at || b.last_scanned_at || "").localeCompare(String(a.updated_at || a.last_scanned_at || ""))
+      );
+      const chosen = [];
+      const usedTypes = new Set();
+      for (const row of documents) {
+        const portraitDoc = isPortraitDocument(row);
+        const groupKey = portraitDoc ? "portrait" : row.document_type?.startsWith("citizen_id") ? row.document_type : row.document_type;
+        if (usedTypes.has(groupKey)) continue;
+        usedTypes.add(groupKey);
+        const [label, shortLabel] = portraitDoc ? labels.portrait : (labels[row.document_type] || labels.other);
+        chosen.push({
+          label,
+          shortLabel,
+          pending: row.verification_status === "pending",
+          url: row.drive_view_url || `https://drive.google.com/open?id=${encodeURIComponent(row.drive_file_id)}`,
+          documentType: portraitDoc ? "portrait" : row.document_type
+        });
+        if (chosen.length >= 4) break;
+      }
+      const portraitDocs = documents.filter(isPortraitDocument);
+      map.set(employeeId, {
+        items: chosen,
+        pendingCount: documents.filter(row => row.verification_status === "pending").length,
+        portraitCount: portraitDocs.length,
+        portraitVerified: portraitDocs.some(row => row.verification_status === "verified"),
+        portraitPending: portraitDocs.some(row => row.verification_status === "pending"),
+        hasPrimaryPortrait: portraitDocs.some(row => row.is_primary && row.verification_status === "verified")
+      });
+    });
+    return map;
+  }
+
+  function employeePhotoState(row) {
+    const bundle = state.employeeDocumentLinks.get(row.id) || {};
+    const hasPhotoUrl = Boolean(String(row.photo_url || "").trim());
+    const hasVerified = hasPhotoUrl || Boolean(bundle.portraitVerified || bundle.hasPrimaryPortrait);
+    const hasPending = Boolean(bundle.portraitPending);
+    return { hasPhotoUrl, hasVerified, hasPending, hasAny: hasVerified || hasPending };
+  }
+
+  function employeeMatchesPhotoFilter(row, filter) {
+    if (!filter) return true;
+    const photo = employeePhotoState(row);
+    if (filter === "verified") return photo.hasVerified;
+    if (filter === "review") return photo.hasPending;
+    if (filter === "missing") return !photo.hasAny;
+    return true;
+  }
+
+  async function loadEmployeeDocumentLinks() {
+    state.employeeDocumentLinks = new Map();
+    if (!isHR()) return;
+    const { data, error } = await supabase
+      .from("employee_documents")
+      .select("employee_id,document_type,source_kind,drive_file_id,drive_view_url,verification_status,is_primary,match_confidence,last_scanned_at,updated_at")
+      .not("employee_id", "is", null)
+      .in("verification_status", ["verified","pending"])
+      .limit(10000);
+    if (error) {
+      console.warn("Không tải được liên kết tài liệu nhân sự:", error.message || error);
+      return;
+    }
+    state.employeeDocumentLinks = buildEmployeeDocumentLinkMap(data || []);
+  }
+
   async function loadEmployees() {
     try {
       let response = await supabase
@@ -1076,6 +1211,7 @@
         (privateResponse.data || []).forEach(row => state.employeePrivateById.set(row.employee_id, row));
       }
 
+      await loadEmployeeDocumentLinks();
       state.employees = (response.data || []).map(canonicalEmployee);
       populateEmployeeFilters();
       renderEmployees();
@@ -1167,6 +1303,16 @@
     if (/thiếu mã|thieu ma/.test(query)) { filter.missingCode = true; filter.labels.push("Thiếu mã"); }
     if (/thiếu email|thieu email/.test(query)) { filter.missingEmail = true; filter.labels.push("Thiếu email"); }
     if (/cần rà soát|can ra soat|dữ liệu lỗi|du lieu loi/.test(query)) { filter.quality = "needs_review"; filter.labels.push("Cần rà soát"); }
+    if (/(chưa có|chua co|thiếu|thieu).*(ảnh|anh|hình|hinh|photo)|(ảnh|anh|hình|hinh|photo).*(chưa có|chua co|thiếu|thieu)/.test(query)) {
+      filter.photo = "missing";
+      filter.labels.push("Chưa có ảnh");
+    } else if (/(ảnh|anh|hình|hinh|photo).*(cần|can|chờ|cho).*(kiểm tra|kiem tra|xác nhận|xac nhan|duyệt|duyet)/.test(query)) {
+      filter.photo = "review";
+      filter.labels.push("Ảnh cần kiểm tra");
+    } else if (/(có|co).*(ảnh|anh|hình|hinh|photo)/.test(query)) {
+      filter.photo = "verified";
+      filter.labels.push("Có ảnh đã xác nhận");
+    }
 
     const dimensions = {
       department: findDimensionMention(query, unique(state.employees.map(row => row.department))),
@@ -1219,7 +1365,7 @@
 
   function clearEmployeeFilters() {
     ["employeeSearch","employeeSmartFilter"].forEach(id => { if ($(id)) $(id).value = ""; });
-    ["employeeDepartmentFilter","employeeAreaFilter","employeeBranchFilter","employeeTeamFilter","employeeCodeGroupFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeBankFilter","employeeBankDataFilter","employeeQualityFilter"].forEach(id => { if ($(id)) $(id).value = ""; });
+    ["employeeDepartmentFilter","employeeAreaFilter","employeeBranchFilter","employeeTeamFilter","employeeCodeGroupFilter","employeeTitleFilter","employeeLevelFilter","employeeTypeFilter","employeeBankFilter","employeeBankDataFilter","employeePhotoFilter","employeeQualityFilter"].forEach(id => { if ($(id)) $(id).value = ""; });
     if ($("employeeStatusFilter")) $("employeeStatusFilter").value = "active";
     if ($("employeeSortSelect")) $("employeeSortSelect").value = "organization";
     if ($("employeeGroupSelect")) $("employeeGroupSelect").value = "department";
@@ -1246,6 +1392,7 @@
     if (Number.isFinite(f.minHierarchyRank) && Number(row.hierarchy_rank || 999) < f.minHierarchyRank) return false;
     if (f.missingCode && String(row.employee_code || "").trim()) return false;
     if (f.missingEmail && (String(row.work_email || "").trim() || String(row.personal_email || "").trim())) return false;
+    if (f.photo && !employeeMatchesPhotoFilter(row, f.photo)) return false;
     return true;
   }
 
@@ -1262,6 +1409,7 @@
     const type = $("employeeTypeFilter")?.value || "";
     const bank = $("employeeBankFilter")?.value || "";
     const bankData = $("employeeBankDataFilter")?.value || "";
+    const photo = $("employeePhotoFilter")?.value || "";
     const quality = $("employeeQualityFilter")?.value || "";
 
     return state.employees.filter(row => {
@@ -1281,6 +1429,7 @@
       if (isHR() && bankData === "missing_account" && (!privateData.bank_name || privateData.bank_account)) return false;
       if (isHR() && bankData === "missing_bank" && (privateData.bank_name || !privateData.bank_account)) return false;
       if (isHR() && bankData === "missing_all" && (privateData.bank_name || privateData.bank_account)) return false;
+      if (isHR() && photo && !employeeMatchesPhotoFilter(row, photo)) return false;
       if (quality && row.data_quality !== quality) return false;
       return smartFilterMatches(row);
     });
@@ -1310,24 +1459,25 @@
     contact: "Thông tin liên hệ",
     payroll: "Lương & ngân hàng",
     probation: "Thử việc / hợp đồng",
+    documents: "Hồ sơ Drive",
     status: "Trạng thái"
   };
 
   const EMPLOYEE_COLUMNS = {
     operations: [
-      ["employee_code","Mã","identity"],["full_name","Họ tên","identity"],["nickname","Nick Name","identity"],
+      ["employee_code","Mã","identity"],["full_name","Họ tên","identity"],["nickname","Nick Name","identity"],["document_links","Hồ sơ Drive","documents"],
       ["department","Phòng ban","work"],["area","Khu vực","work"],["branch","Chi nhánh","work"],["team","Team","work"],
       ["title","Chức danh","work"],["employment_level","Cấp bậc","work"],["employment_type","Loại","work"],
       ["employment_status","Trạng thái","status"],["action","","status"]
     ],
     accounting: [
-      ["employee_code","Mã","identity"],["full_name","Họ tên","identity"],["nickname","Nick Name","identity"],
+      ["employee_code","Mã","identity"],["full_name","Họ tên","identity"],["nickname","Nick Name","identity"],["document_links","Hồ sơ Drive","documents"],
       ["department","Phòng ban","work"],["area","Khu vực","work"],["branch","Chi nhánh","work"],["team","Team","work"],
       ["phone","Số điện thoại","contact"],["bank_name","Ngân hàng","payroll"],["bank_account","Số tài khoản","payroll"],
       ["current_salary","Lương hiện tại","payroll"],["employment_status","Trạng thái","status"],["action","","status"]
     ],
     full: [
-      ["employee_code","Mã số NV","identity"],["full_name","Họ và tên","identity"],["nickname","Nick Name","identity"],["gender","Giới tính","identity"],["birth_date","Ngày sinh","identity"],
+      ["employee_code","Mã số NV","identity"],["full_name","Họ và tên","identity"],["nickname","Nick Name","identity"],["gender","Giới tính","identity"],["birth_date","Ngày sinh","identity"],["document_links","Hồ sơ Drive","documents"],
       ["department","Phòng ban","work"],["start_date","Ngày bắt đầu","work"],["area","Khu vực / Cụm","work"],["branch","Chi nhánh","work"],["team","Team","work"],
       ["title","Chức danh","work"],["employment_level","Cấp bậc","work"],["employment_type","Loại công việc","work"],
       ["work_email","Email công việc","contact"],["personal_email","Email cá nhân","contact"],["phone","Số điện thoại","contact"],
@@ -1341,61 +1491,15 @@
   };
 
   const PRIVATE_EMPLOYEE_FIELDS = new Set([
-    "birth_date","ethnicity","religion","nationality","citizen_id","social_insurance_no","tax_code","address_line","district","province",
+    "document_links","birth_date","ethnicity","religion","nationality","citizen_id","social_insurance_no","tax_code","address_line","district","province",
     "starting_salary","current_salary","bank_account","bank_name","probation_start","probation_end","probation_status","related_documents",
     "official_contract_type","contract_expiry","contract_file_url","handover_status","handover_date"
   ]);
   const DATE_EMPLOYEE_FIELDS = new Set(["birth_date","start_date","official_date","end_date","probation_start","probation_end","contract_expiry","handover_date"]);
   const MONEY_EMPLOYEE_FIELDS = new Set(["starting_salary","current_salary"]);
-  const EMPLOYEE_COLUMN_WIDTHS = {
-    select: 48,
-    employee_code: 112,
-    full_name: 220,
-    nickname: 110,
-    gender: 90,
-    birth_date: 120,
-    department: 120,
-    start_date: 120,
-    area: 130,
-    branch: 130,
-    team: 120,
-    title: 160,
-    employment_level: 145,
-    employment_type: 120,
-    work_email: 190,
-    personal_email: 190,
-    phone: 130,
-    ethnicity: 120,
-    religion: 120,
-    nationality: 120,
-    citizen_id: 150,
-    social_insurance_no: 150,
-    tax_code: 150,
-    address_line: 220,
-    district: 150,
-    province: 150,
-    starting_salary: 145,
-    current_salary: 145,
-    bank_account: 160,
-    bank_name: 170,
-    probation_start: 125,
-    probation_end: 125,
-    probation_status: 140,
-    related_documents: 190,
-    official_date: 125,
-    official_contract_type: 170,
-    contract_expiry: 125,
-    contract_file_url: 170,
-    end_date: 125,
-    handover_status: 140,
-    handover_date: 125,
-    employment_status: 120,
-    data_quality: 120,
-    action: 110
-  };
 
   function employeeColumnStorageKey() {
-    return `uws_employee_columns_v35_${state.user?.id || "guest"}`;
+    return `uws_employee_columns_v40_${state.user?.id || "guest"}`;
   }
 
   function accessibleEmployeeColumns() {
@@ -1428,9 +1532,13 @@
     state.employeeColumnPreset = fallback;
     state.employeeVisibleColumns = new Set(normalizeEmployeeColumnFields(presetEmployeeFields(fallback)));
     try {
-      const saved = JSON.parse(localStorage.getItem(employeeColumnStorageKey()) || "null");
+      const newKey = employeeColumnStorageKey();
+      const oldKey = `uws_employee_columns_v35_${state.user?.id || "guest"}`;
+      const rawSaved = localStorage.getItem(newKey) || localStorage.getItem(oldKey);
+      const saved = JSON.parse(rawSaved || "null");
       if (saved && Array.isArray(saved.fields)) {
-        const fields = normalizeEmployeeColumnFields(saved.fields);
+        const migratedFields = isHR() && !saved.fields.includes("document_links") ? [...saved.fields, "document_links"] : saved.fields;
+        const fields = normalizeEmployeeColumnFields(migratedFields);
         if (fields.length >= 2) {
           state.employeeVisibleColumns = new Set(fields);
           state.employeeColumnPreset = saved.preset || "custom";
@@ -1548,12 +1656,13 @@
     return columns;
   }
 
-  function employeeColumnWidth(field) {
-    return EMPLOYEE_COLUMN_WIDTHS[field] || 120;
-  }
-
   function employeeColumnRawValue(row, field) {
     if (field === "select") return "";
+    if (field === "document_links") {
+      const bundle = state.employeeDocumentLinks.get(row.id);
+      if (!bundle) return "";
+      return bundle.items.map(item => `${item.label}: ${item.url}`).join(" | ");
+    }
     if (PRIVATE_EMPLOYEE_FIELDS.has(field)) return row._private?.[field] ?? null;
     return row[field] ?? null;
   }
@@ -1562,6 +1671,11 @@
     const raw = employeeColumnRawValue(row, field);
     if (field === "select") return `<label class="employee-row-check" aria-label="Chọn ${escapeHtml(row.full_name || row.employee_code || "nhân sự")}"><input type="checkbox" data-employee-select="${row.id}" ${state.employeeSelected.has(row.id) ? "checked" : ""}/><span></span></label>`;
     if (field === "action") return `<button class="btn ghost compact-btn" data-employee-id="${row.id}">Xem</button>`;
+    if (field === "document_links") {
+      const bundle = state.employeeDocumentLinks.get(row.id);
+      if (!bundle?.items?.length) return "—";
+      return `<div class="employee-drive-links">${bundle.items.map(item => `<a class="employee-drive-link ${item.pending ? "needs-review" : ""}" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(item.pending ? `${item.label} • Cần HR kiểm tra` : item.label)}"><span>${escapeHtml(item.shortLabel)}</span>${item.pending ? '<i aria-hidden="true"></i>' : ''}</a>`).join("")}</div>`;
+    }
     if (field === "employment_status") {
       const badge = row.employment_status === "active" ? "approved" : row.employment_status === "resigned" ? "rejected" : "pending";
       return `<span class="badge ${badge}">${escapeHtml(EMPLOYEE_STATUS_LABELS[row.employment_status] || row.employment_status || "Chưa rõ")}</span>`;
@@ -1584,21 +1698,6 @@
   function renderEmployeeTableHead(columns) {
     const head = $("employeeTableHead");
     if (!head) return;
-    const table = $("employeeDataTable");
-    if (table) {
-      let colgroup = table.querySelector("colgroup");
-      if (!colgroup) {
-        colgroup = document.createElement("colgroup");
-        table.insertBefore(colgroup, head);
-      }
-      let gridWidth = 0;
-      colgroup.innerHTML = columns.map(([field]) => {
-        const width = employeeColumnWidth(field);
-        gridWidth += width;
-        return `<col data-field="${escapeHtml(field)}" style="width:${width}px">`;
-      }).join("");
-      table.style.setProperty("--employee-grid-width", `${gridWidth}px`);
-    }
     const groups = [];
     columns.forEach(([, , group]) => {
       const label = EMPLOYEE_COLUMN_GROUPS[group] || "";
@@ -1607,6 +1706,71 @@
       else groups.push({ label, count: 1 });
     });
     head.innerHTML = `<tr class="employee-super-head">${groups.map(group => `<th colspan="${group.count}">${escapeHtml(group.label)}</th>`).join("")}</tr><tr>${columns.map(([field,label]) => field === "select" ? `<th data-field="select"><label class="employee-row-check header-check" aria-label="Chọn trang hiện tại"><input id="employeeSelectPage" type="checkbox"/><span></span></label></th>` : `<th data-field="${field}" title="${escapeHtml(label)}">${escapeHtml(label)}</th>`).join("")}</tr>`;
+  }
+
+  function bindEmployeeGridInteractions() {
+    const panel = $("employeeGridPanel");
+    if (!panel || panel.dataset.dragScrollBound === "true") return;
+    panel.dataset.dragScrollBound = "true";
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let dragged = false;
+    let suppressClick = false;
+    const interactiveSelector = "a,button,input,select,textarea,label,[role=button],[contenteditable=true]";
+
+    panel.addEventListener("pointerdown", event => {
+      if (window.innerWidth <= 820 || event.button !== 0 || event.target.closest(interactiveSelector)) return;
+      if (panel.scrollWidth <= panel.clientWidth) return;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollLeft = panel.scrollLeft;
+      dragged = false;
+      panel.setPointerCapture?.(pointerId);
+    });
+    panel.addEventListener("pointermove", event => {
+      if (pointerId !== event.pointerId) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (!dragged && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+      if (Math.abs(dx) < Math.abs(dy) * .7) return;
+      dragged = true;
+      suppressClick = true;
+      panel.classList.add("is-dragging-table");
+      panel.scrollLeft = startScrollLeft - dx;
+      event.preventDefault();
+    });
+    const finishDrag = event => {
+      if (pointerId !== null && event?.pointerId === pointerId) panel.releasePointerCapture?.(pointerId);
+      pointerId = null;
+      panel.classList.remove("is-dragging-table");
+      window.setTimeout(() => { suppressClick = false; }, 0);
+    };
+    panel.addEventListener("pointerup", finishDrag);
+    panel.addEventListener("pointercancel", finishDrag);
+    panel.addEventListener("click", event => {
+      if (!suppressClick) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+    panel.addEventListener("wheel", event => {
+      if (window.innerWidth <= 820) return;
+      const horizontalIntent = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY);
+      if (horizontalIntent && panel.scrollWidth > panel.clientWidth) {
+        panel.scrollLeft += event.deltaX || event.deltaY;
+        event.preventDefault();
+        return;
+      }
+      const canScrollVertically = panel.scrollHeight > panel.clientHeight + 1;
+      const atTop = panel.scrollTop <= 0 && event.deltaY < 0;
+      const atBottom = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 1 && event.deltaY > 0;
+      if ((!canScrollVertically || atTop || atBottom) && !document.fullscreenElement && !panel.classList.contains("grid-faux-fullscreen")) {
+        event.preventDefault();
+        window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
+      }
+    }, { passive: false });
   }
 
   async function toggleEmployeeGridFullscreen() {
@@ -1627,7 +1791,7 @@
     const button = $("employeeGridFullscreenBtn");
     if (!panel || !button) return;
     const active = document.fullscreenElement === panel || panel.classList.contains("grid-faux-fullscreen");
-    button.textContent = active ? "Thu nhỏ" : "Toàn màn hình";
+    button.textContent = active ? "Thu nhỏ" : "Mở rộng";
   }
 
   function employeeGroupLabel(row, mode) {
@@ -1650,7 +1814,11 @@
     const groupMode = $("employeeGroupSelect")?.value || "department";
     const columns = employeeColumnsForView();
     const columnMode = state.employeeColumnPreset || "custom";
-    if ($("employeeDataTable")) $("employeeDataTable").dataset.view = columnMode;
+    const hasSelectColumn = columns.some(([field]) => field === "select");
+    if ($("employeeDataTable")) {
+      $("employeeDataTable").dataset.view = columnMode;
+      $("employeeDataTable").dataset.hasSelectColumn = hasSelectColumn ? "true" : "false";
+    }
     if ($("employeeGridPanel")) $("employeeGridPanel").dataset.view = columnMode;
     renderEmployeeTableHead(columns);
     let lastGroup = null;
@@ -1882,6 +2050,22 @@
     return value ?? "";
   }
 
+  function employeeFilterSummaryRows(resultCount) {
+    return [
+      ["Trạng thái", $("employeeStatusFilter")?.selectedOptions?.[0]?.textContent || "Tất cả"],
+      ["Nhóm mã", $("employeeCodeGroupFilter")?.selectedOptions?.[0]?.textContent || "Tất cả"],
+      ["Phòng ban", $("employeeDepartmentFilter")?.value || "Tất cả"],
+      ["Khu vực", $("employeeAreaFilter")?.value || "Tất cả"],
+      ["Chi nhánh", $("employeeBranchFilter")?.value || "Tất cả"],
+      ["Team", $("employeeTeamFilter")?.value || "Tất cả"],
+      ["Ngân hàng", $("employeeBankFilter")?.value || "Tất cả"],
+      ["Ảnh nhân sự", $("employeePhotoFilter")?.selectedOptions?.[0]?.textContent || "Tất cả"],
+      ["Chất lượng dữ liệu", $("employeeQualityFilter")?.selectedOptions?.[0]?.textContent || "Tất cả"],
+      ["Kết quả", `${resultCount.toLocaleString("vi-VN")} nhân sự`],
+      ["Ngày tạo", new Date().toLocaleString("vi-VN")]
+    ];
+  }
+
   async function exportFilteredEmployees() {
     if (!isHR()) return;
     if (!window.XLSX) return toast("Thư viện Excel chưa tải được.", "err");
@@ -1904,18 +2088,7 @@
         ]);
       });
 
-      const filterRows = [
-        ["BỘ LỌC ĐÃ ÁP DỤNG", "GIÁ TRỊ"],
-        ["Trạng thái", $("employeeStatusFilter")?.selectedOptions?.[0]?.textContent || "Tất cả"],
-        ["Nhóm mã", $("employeeCodeGroupFilter")?.selectedOptions?.[0]?.textContent || "Tất cả"],
-        ["Phòng ban", $("employeeDepartmentFilter")?.value || "Tất cả"],
-        ["Khu vực", $("employeeAreaFilter")?.value || "Tất cả"],
-        ["Chi nhánh", $("employeeBranchFilter")?.value || "Tất cả"],
-        ["Team", $("employeeTeamFilter")?.value || "Tất cả"],
-        ["Ngân hàng", $("employeeBankFilter")?.value || "Tất cả"],
-        ["Kết quả", `${rows.length} nhân sự`],
-        ["Ngày xuất", new Date().toLocaleString("vi-VN")]
-      ];
+      const filterRows = [["BỘ LỌC ĐÃ ÁP DỤNG", "GIÁ TRỊ"], ...employeeFilterSummaryRows(rows.length)];
 
       const workbook = window.XLSX.utils.book_new();
       const employeeSheet = window.XLSX.utils.aoa_to_sheet(employeeRows);
@@ -1944,6 +2117,553 @@
     }
   }
 
+  function printFilteredEmployees() {
+    if (!isHR()) return;
+    const button = $("printFilteredEmployeesBtn");
+    setLoading(button, true, "Đang mở bản in...");
+    try {
+      const rows = sortEmployees(filteredEmployees());
+      if (!rows.length) throw new Error("Không có nhân sự phù hợp để in.");
+      const printColumns = employeeColumnsForView().filter(([field]) => !["select","action"].includes(field));
+      const filterRows = employeeFilterSummaryRows(rows.length);
+      const printedAt = new Date().toLocaleString("vi-VN");
+      const tableHead = `<tr><th>STT</th>${printColumns.map(([, label]) => `<th>${escapeHtml(label)}</th>`).join("")}</tr>`;
+      const tableRows = rows.map((row, index) => `<tr><td>${index + 1}</td>${printColumns.map(([field]) => `<td>${escapeHtml(employeeExportValue(row, field) || "—")}</td>`).join("")}</tr>`).join("");
+      const summaryRows = filterRows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("");
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) throw new Error("Trình duyệt đang chặn cửa sổ in. Hãy cho phép popup để in danh sách.");
+      printWindow.document.open();
+      printWindow.document.write(`<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<title>In danh sách nhân sự</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #17202a; font: 11px/1.45 Arial, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  .print-meta { margin-bottom: 14px; color: #5f6875; }
+  .summary { width: 100%; margin-bottom: 14px; border-collapse: collapse; }
+  .summary th, .summary td { padding: 5px 7px; border: 1px solid #d9dee5; text-align: left; }
+  .summary th { width: 150px; background: #f5f7fa; }
+  .employee-print-table { width: 100%; border-collapse: collapse; }
+  .employee-print-table th, .employee-print-table td { padding: 5px 6px; border: 1px solid #d9dee5; vertical-align: top; }
+  .employee-print-table th { background: #741f2b; color: #fff; text-align: left; }
+  .employee-print-table td { word-break: break-word; }
+  .employee-print-table tr:nth-child(even) td { background: #fafbfc; }
+</style>
+</head>
+<body>
+  <h1>Danh sách nhân sự đang lọc</h1>
+  <div class="print-meta">${escapeHtml(rows.length.toLocaleString("vi-VN"))} nhân sự • ${escapeHtml(printedAt)}</div>
+  <table class="summary"><tbody>${summaryRows}</tbody></table>
+  <table class="employee-print-table"><thead>${tableHead}</thead><tbody>${tableRows}</tbody></table>
+<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),120));<\/script>
+</body>
+</html>`);
+      printWindow.document.close();
+      toast(`Đã mở bản in ${rows.length.toLocaleString("vi-VN")} nhân sự.`);
+    } catch (error) {
+      toast(error.message || String(error), "err", 5200);
+    } finally {
+      setLoading(button, false);
+    }
+  }
+
+
+  const DOCUMENT_TYPE_LABELS = {
+    portrait: "Ảnh chân dung",
+    citizen_id_front: "CCCD mặt trước",
+    citizen_id_back: "CCCD mặt sau",
+    citizen_id_combined: "CCCD gộp",
+    employee_dossier: "Hồ sơ DOCX/Google Docs",
+    contract: "Hợp đồng",
+    certificate: "Chứng chỉ",
+    docx_image: "Ảnh trích từ DOCX",
+    other: "Khác"
+  };
+  const DOCUMENT_STATUS_LABELS = { verified: "Đã liên kết", pending: "Cần xác nhận", unmatched: "Chưa nhận diện", rejected: "Đã loại" };
+  const DOCUMENT_MATCH_LABELS = {
+    employee_code: "Khớp mã nhân viên",
+    employee_code_and_name: "Khớp mã + họ tên",
+    full_name_unique: "Họ tên duy nhất",
+    doc_text_employee_code: "Mã trong nội dung DOCX",
+    doc_text_full_name: "Họ tên trong nội dung DOCX",
+    fuzzy_suggestion: "Tên gần giống",
+    manual: "HR xác nhận",
+    unmatched: "Chưa khớp"
+  };
+
+  function folderIdFromInput(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const match = raw.match(/[-\w]{20,}/);
+    return match ? match[0] : raw;
+  }
+
+  async function ensureDocumentEmployeeDirectory() {
+    if (state.employees.length) return;
+    const { data, error } = await supabase.from("employees")
+      .select("id,employee_code,full_name,employment_status,department,area,branch,team,title,nickname,photo_url")
+      .order("full_name")
+      .limit(5000);
+    if (error) throw error;
+    state.employees = (data || []).map(canonicalEmployee);
+  }
+
+  async function loadEmployeeDocumentReviewBadge() {
+    if (!isHR()) return;
+    try {
+      const { count, error } = await supabase.from("employee_documents")
+        .select("id", { count: "exact", head: true })
+        .in("verification_status", ["pending", "unmatched"]);
+      if (error) return;
+      const badge = $("navDocumentReviewCount");
+      if (badge) {
+        badge.textContent = count || 0;
+        badge.classList.toggle("hidden", !count);
+      }
+    } catch {}
+  }
+
+  async function loadEmployeeDocumentsPage() {
+    if (!isHR()) return;
+    const table = $("employeeDocumentTable");
+    if (table) table.innerHTML = '<tr><td colspan="7" class="empty-row">Đang tải kho tài liệu...</td></tr>';
+    try {
+      await ensureDocumentEmployeeDirectory();
+      const [settingsRes, documentsRes] = await Promise.all([
+        supabase.from("hr_document_settings").select("*").eq("id", "default").maybeSingle(),
+        supabase.from("employee_documents")
+          .select("*, employees:employee_id(id,employee_code,full_name,employment_status)")
+          .order("last_scanned_at", { ascending: false })
+          .limit(5000)
+      ]);
+      if (settingsRes.error) throw settingsRes.error;
+      if (documentsRes.error) throw documentsRes.error;
+      state.documentSettings = settingsRes.data || { id: "default", extract_docx_images: true, scan_recursive: true };
+      state.employeeDocuments = documentsRes.data || [];
+      if ($("documentCccdFolderInput")) $("documentCccdFolderInput").value = state.documentSettings.cccd_folder_id || "";
+      if ($("documentPortraitFolderInput")) $("documentPortraitFolderInput").value = state.documentSettings.portrait_folder_id || "";
+      if ($("documentOtherFolderInput")) $("documentOtherFolderInput").value = state.documentSettings.other_folder_id || "";
+      if ($("documentExtractedFolderInput")) $("documentExtractedFolderInput").value = state.documentSettings.extracted_folder_id || "";
+      if ($("documentExtractDocx")) $("documentExtractDocx").checked = state.documentSettings.extract_docx_images !== false;
+      if ($("documentRecursiveScan")) $("documentRecursiveScan").checked = state.documentSettings.scan_recursive !== false;
+      updateEmployeeDocumentMetrics();
+      renderEmployeeDocuments();
+      await loadDocumentWorkerState();
+    } catch (error) {
+      if (table) table.innerHTML = `<tr><td colspan="7" class="empty-row">${escapeHtml(migrationError(error))}</td></tr>`;
+      showMessage($("documentScanMessage"), migrationError(error), "err");
+    }
+  }
+
+  function updateEmployeeDocumentMetrics() {
+    const docs = state.employeeDocuments;
+    const verified = docs.filter(row => row.verification_status === "verified").length;
+    const pending = docs.filter(row => row.verification_status === "pending").length;
+    const unmatched = docs.filter(row => row.verification_status === "unmatched").length;
+    if ($("documentMetricTotal")) $("documentMetricTotal").textContent = docs.length.toLocaleString("vi-VN");
+    if ($("documentMetricVerified")) $("documentMetricVerified").textContent = verified.toLocaleString("vi-VN");
+    if ($("documentMetricPending")) $("documentMetricPending").textContent = pending.toLocaleString("vi-VN");
+    if ($("documentMetricUnmatched")) $("documentMetricUnmatched").textContent = unmatched.toLocaleString("vi-VN");
+    const reviewCount = pending + unmatched;
+    const badge = $("navDocumentReviewCount");
+    if (badge) {
+      badge.textContent = reviewCount;
+      badge.classList.toggle("hidden", reviewCount === 0);
+    }
+  }
+
+  function filteredEmployeeDocuments() {
+    const search = normalize($("documentSearchInput")?.value);
+    const type = $("documentTypeFilter")?.value || "";
+    const status = $("documentStatusFilter")?.value || "";
+    const source = $("documentSourceFilter")?.value || "";
+    return state.employeeDocuments.filter(row => {
+      const employee = row.employees || {};
+      if (search && !normalize(`${row.file_name || ""} ${employee.employee_code || ""} ${employee.full_name || ""} ${row.source_folder || ""}`).includes(search)) return false;
+      if (type && row.document_type !== type) return false;
+      if (status && row.verification_status !== status) return false;
+      if (source && row.source_kind !== source) return false;
+      return true;
+    });
+  }
+
+  function renderEmployeeDocuments() {
+    const table = $("employeeDocumentTable");
+    if (!table) return;
+    const rows = filteredEmployeeDocuments();
+    if (!rows.length) {
+      table.innerHTML = '<tr><td colspan="7" class="empty-row">Không có tài liệu phù hợp.</td></tr>';
+      return;
+    }
+    table.innerHTML = rows.map(row => {
+      const employee = row.employees || {};
+      const status = row.verification_status || "unmatched";
+      const confidence = Number(row.match_confidence || 0);
+      const thumbnail = row.drive_thumbnail_url && /^image\//i.test(row.mime_type || "")
+        ? `<img class="document-thumb" src="${escapeHtml(row.drive_thumbnail_url)}" alt="" loading="lazy" referrerpolicy="no-referrer"/>`
+        : `<span class="document-file-icon"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v5h5"></path></svg></span>`;
+      const employeeHtml = row.employee_id
+        ? `<b>${escapeHtml(employee.full_name || "Nhân sự")}</b><small>${escapeHtml(employee.employee_code || "Chưa mã")}</small>`
+        : `<b class="document-unlinked">Chưa liên kết</b><small>${escapeHtml(DOCUMENT_MATCH_LABELS[row.match_method] || row.match_method || "")}</small>`;
+      return `<tr data-document-id="${row.id}">
+        <td><div class="document-file-cell">${thumbnail}<div><b title="${escapeHtml(row.file_name)}">${escapeHtml(row.file_name)}</b><small>${escapeHtml(row.mime_type || "Không rõ định dạng")}${row.is_extracted ? " • Ảnh trích" : ""}</small></div></div></td>
+        <td><span class="portal-chip">${escapeHtml(DOCUMENT_TYPE_LABELS[row.document_type] || row.document_type)}</span></td>
+        <td><div class="document-employee-cell">${employeeHtml}</div></td>
+        <td><div class="document-confidence"><b>${confidence ? `${confidence.toFixed(confidence % 1 ? 1 : 0)}%` : "—"}</b><small>${escapeHtml(DOCUMENT_MATCH_LABELS[row.match_method] || row.match_method || "")}</small></div></td>
+        <td><span class="document-status-badge ${status}">${escapeHtml(DOCUMENT_STATUS_LABELS[status] || status)}</span>${row.is_primary ? '<small class="primary-portrait-label">Ảnh đại diện</small>' : ''}</td>
+        <td><b>${escapeHtml(row.source_kind || "mixed")}</b><small class="document-source-path" title="${escapeHtml(row.source_folder || "")}">${escapeHtml(row.source_folder || "—")}</small></td>
+        <td><div class="document-row-actions">
+          <button class="btn ghost compact-btn" data-document-action="open" data-document-id="${row.id}" type="button">Mở</button>
+          <button class="btn secondary compact-btn" data-document-action="link" data-document-id="${row.id}" type="button">${row.employee_id ? "Sửa liên kết" : "Gán nhân sự"}</button>
+          ${row.employee_id ? `<button class="btn ghost compact-btn" data-document-action="unlink" data-document-id="${row.id}" type="button">Gỡ</button>` : ""}
+          ${row.document_type === "portrait" && row.verification_status === "verified" && !row.is_primary ? `<button class="btn ghost compact-btn" data-document-action="primary" data-document-id="${row.id}" type="button">Đặt ảnh chính</button>` : ""}
+          ${status !== "rejected" ? `<button class="btn ghost compact-btn danger-link" data-document-action="reject" data-document-id="${row.id}" type="button">Loại</button>` : ""}
+        </div></td>
+      </tr>`;
+    }).join("");
+  }
+
+  async function saveDocumentSettings() {
+    if (!isHR()) return;
+    const button = $("saveDocumentSettingsBtn");
+    setLoading(button, true, "Đang lưu...");
+    try {
+      const payload = {
+        id: "default",
+        cccd_folder_id: folderIdFromInput($("documentCccdFolderInput")?.value) || null,
+        portrait_folder_id: folderIdFromInput($("documentPortraitFolderInput")?.value) || null,
+        other_folder_id: folderIdFromInput($("documentOtherFolderInput")?.value) || null,
+        extracted_folder_id: folderIdFromInput($("documentExtractedFolderInput")?.value) || null,
+        extract_docx_images: Boolean($("documentExtractDocx")?.checked),
+        scan_recursive: Boolean($("documentRecursiveScan")?.checked),
+        updated_by: state.user.id,
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await supabase.from("hr_document_settings").upsert(payload, { onConflict: "id" }).select("*").single();
+      if (error) throw error;
+      state.documentSettings = data;
+      ["documentCccdFolderInput","documentPortraitFolderInput","documentOtherFolderInput","documentExtractedFolderInput"].forEach(id => {
+        const el = $(id); if (!el) return;
+        el.value = id.includes("Cccd") ? data.cccd_folder_id || ""
+          : id.includes("Portrait") ? data.portrait_folder_id || ""
+          : id.includes("Extracted") ? data.extracted_folder_id || ""
+          : data.other_folder_id || "";
+      });
+      toast("Đã lưu cấu hình thư mục hồ sơ.");
+      return true;
+    } catch (error) {
+      showMessage($("documentScanMessage"), migrationError(error), "err");
+      return false;
+    } finally { setLoading(button, false); }
+  }
+
+  const DOCUMENT_JOB_STATUS_LABELS = {
+    pending: "Đang chờ máy Media",
+    processing: "Đang xử lý",
+    completed: "Hoàn tất",
+    failed: "Thất bại",
+    cancelled: "Đã hủy"
+  };
+
+  function formatRelativeWorkerTime(value) {
+    if (!value) return "Chưa có heartbeat";
+    const date = new Date(value);
+    const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+    if (seconds < 60) return `${seconds} giây trước`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes} phút trước`;
+    const hours = Math.round(minutes / 60);
+    return `${hours} giờ trước`;
+  }
+
+  async function loadDocumentWorkerState() {
+    if (!isHR()) return;
+    try {
+      const [workerRes, jobRes] = await Promise.all([
+        supabase.from("document_worker_status").select("*").order("last_seen_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("document_scan_jobs").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle()
+      ]);
+      if (workerRes.error) throw workerRes.error;
+      if (jobRes.error) throw jobRes.error;
+      state.documentWorkerStatus = workerRes.data || null;
+      state.documentScanJob = jobRes.data || null;
+      renderDocumentWorkerState();
+      if (state.documentScanJob?.status === "completed" && state.documentScanJob?.finished_at) {
+        const finished = new Date(state.documentScanJob.finished_at).getTime();
+        const loaded = Number(sessionStorage.getItem("uws_document_job_loaded_at") || 0);
+        if (finished > loaded) {
+          sessionStorage.setItem("uws_document_job_loaded_at", String(finished));
+          const documentsRes = await supabase.from("employee_documents")
+            .select("*, employees:employee_id(id,employee_code,full_name,employment_status)")
+            .order("last_scanned_at", { ascending: false })
+            .limit(5000);
+          if (!documentsRes.error) {
+            state.employeeDocuments = documentsRes.data || [];
+            updateEmployeeDocumentMetrics();
+            renderEmployeeDocuments();
+          }
+        }
+      }
+    } catch (error) {
+      const message = migrationError(error);
+      if (/document_scan_jobs|document_worker_status|does not exist|schema cache/i.test(message)) {
+        showMessage($("documentScanMessage"), "Chưa chạy migration V39 cho Python Worker.", "warn");
+      }
+    }
+  }
+
+  function renderDocumentWorkerState() {
+    const worker = state.documentWorkerStatus;
+    const job = state.documentScanJob;
+    const lastSeen = worker?.last_seen_at ? new Date(worker.last_seen_at).getTime() : 0;
+    const jobHeartbeat = job?.heartbeat_at ? new Date(job.heartbeat_at).getTime() : 0;
+    const online = (lastSeen && Date.now() - lastSeen < 120000) || (job?.status === "processing" && jobHeartbeat && Date.now() - jobHeartbeat < 120000);
+    const workerBadge = $("documentWorkerState");
+    if (workerBadge) {
+      const status = online ? (worker?.status || "online") : "offline";
+      workerBadge.className = `worker-status-badge ${status}`;
+      workerBadge.textContent = online
+        ? status === "processing" ? "Đang xử lý" : status === "error" ? "Có lỗi" : "Máy Media đang online"
+        : "Máy Media đang offline";
+    }
+    if ($("documentWorkerHost")) $("documentWorkerHost").textContent = worker?.host_name || worker?.worker_id || "—";
+    if ($("documentWorkerLastSeen")) $("documentWorkerLastSeen").textContent = worker?.last_seen_at
+      ? `Cập nhật ${formatRelativeWorkerTime(worker.last_seen_at)} • V${worker.worker_version || "?"}`
+      : "Chưa có heartbeat";
+
+    const status = job?.status || "";
+    if ($("documentJobStatus")) $("documentJobStatus").textContent = status ? (DOCUMENT_JOB_STATUS_LABELS[status] || status) : "Chưa có yêu cầu";
+    if ($("documentJobSource")) $("documentJobSource").textContent = job
+      ? `${job.source_kind === "all" ? "Tất cả thư mục" : job.source_kind.toUpperCase()} • ${job.trigger_type || "manual"}`
+      : "—";
+    const total = Number(job?.total_files || 0);
+    const processed = Number(job?.processed_files || 0);
+    const percent = total > 0 ? Math.min(100, Math.round(processed / total * 100)) : (status === "completed" ? 100 : 0);
+    if ($("documentJobProgressText")) $("documentJobProgressText").textContent = `${processed.toLocaleString("vi-VN")} / ${total.toLocaleString("vi-VN")} file`;
+    if ($("documentJobProgressBar")) $("documentJobProgressBar").style.width = `${percent}%`;
+    if ($("documentJobMessage")) $("documentJobMessage").textContent = job?.progress_message || worker?.message || "Khi HR bấm quét, yêu cầu sẽ chờ đến lúc máy Media đang mở.";
+    const cancelBtn = $("cancelDocumentScanBtn");
+    cancelBtn?.classList.toggle("hidden", status !== "pending");
+    if ($("scanAllEmployeeDocumentsBtn")) {
+      $("scanAllEmployeeDocumentsBtn").disabled = ["pending","processing"].includes(status);
+      $("scanAllEmployeeDocumentsBtn").textContent = status === "pending" ? "Đã xếp hàng" : status === "processing" ? "Máy Media đang quét" : "Yêu cầu máy Media quét";
+    }
+  }
+
+  function startDocumentJobPolling() {
+    stopDocumentJobPolling();
+    loadDocumentWorkerState();
+    state.documentJobPollTimer = window.setInterval(() => {
+      if (state.page === "documents") loadDocumentWorkerState();
+    }, 5000);
+  }
+
+  function stopDocumentJobPolling() {
+    if (state.documentJobPollTimer) window.clearInterval(state.documentJobPollTimer);
+    state.documentJobPollTimer = null;
+  }
+
+  async function requestDocumentScan(sourceKind) {
+    if (!isHR()) return null;
+    try {
+      const saved = await saveDocumentSettings();
+      if (!saved) return null;
+      const { data, error } = await supabase.rpc("request_employee_document_scan", {
+        p_source_kind: sourceKind,
+        p_force_rescan: Boolean($("documentForceRescan")?.checked)
+      });
+      if (error) throw error;
+      showMessage($("documentScanMessage"), "Đã xếp yêu cầu. Nếu máy Media đang mở, worker sẽ nhận trong khoảng 20 giây.", "ok");
+      toast("Đã gửi yêu cầu quét đến máy Media.");
+      await loadDocumentWorkerState();
+      return data;
+    } catch (error) {
+      showMessage($("documentScanMessage"), migrationError(error), "err");
+      return null;
+    }
+  }
+
+  async function scanEmployeeDocumentFolder(sourceKind) {
+    const folderMap = {
+      cccd: folderIdFromInput($("documentCccdFolderInput")?.value),
+      portrait: folderIdFromInput($("documentPortraitFolderInput")?.value),
+      other: folderIdFromInput($("documentOtherFolderInput")?.value)
+    };
+    if (!folderMap[sourceKind]) {
+      showMessage($("documentScanMessage"), `Chưa nhập thư mục ${sourceKind}.`, "err");
+      return;
+    }
+    await requestDocumentScan(sourceKind);
+  }
+
+  async function scanAllEmployeeDocumentFolders() {
+    const configured = [
+      folderIdFromInput($("documentCccdFolderInput")?.value),
+      folderIdFromInput($("documentPortraitFolderInput")?.value),
+      folderIdFromInput($("documentOtherFolderInput")?.value)
+    ].filter(Boolean);
+    if (!configured.length) {
+      showMessage($("documentScanMessage"), "Chưa cấu hình thư mục nào để quét.", "err");
+      return;
+    }
+    await requestDocumentScan("all");
+  }
+
+  async function cancelPendingDocumentScan() {
+    const job = state.documentScanJob;
+    if (!job || job.status !== "pending") return;
+    const { data, error } = await supabase.rpc("cancel_employee_document_scan", { p_job_id: job.id });
+    if (error) return showMessage($("documentScanMessage"), migrationError(error), "err");
+    if (data) toast("Đã hủy yêu cầu quét đang chờ.");
+    await loadDocumentWorkerState();
+  }
+
+  function handleEmployeeDocumentTableClick(event) {
+    const button = event.target.closest("[data-document-action]");
+    if (!button) return;
+    const documentRow = state.employeeDocuments.find(row => row.id === button.dataset.documentId);
+    if (!documentRow) return;
+    const action = button.dataset.documentAction;
+    if (action === "open") openEmployeeDocumentFile(documentRow);
+    if (action === "link") openDocumentLinkModal(documentRow);
+    if (action === "unlink") unlinkEmployeeDocument(documentRow);
+    if (action === "reject") rejectEmployeeDocument(documentRow);
+    if (action === "primary") setPrimaryEmployeePortrait(documentRow);
+  }
+
+  function logEmployeeDocumentAction(actionType, documentRow, payload = {}) {
+    if (!state.user?.id || !documentRow?.id) return;
+    void supabase.from("activity_logs").insert({
+      actor_id: state.user.id,
+      action_type: actionType,
+      entity_type: "employee_document",
+      entity_id: documentRow.id,
+      payload: { drive_file_id: documentRow.drive_file_id, file_name: documentRow.file_name, ...payload }
+    });
+  }
+
+  function openEmployeeDocumentFile(documentRow) {
+    const url = documentRow.drive_view_url || `https://drive.google.com/open?id=${encodeURIComponent(documentRow.drive_file_id)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    logEmployeeDocumentAction("view", documentRow);
+  }
+
+  function populateDocumentEmployeeSelect(selectedId = "") {
+    const select = $("documentEmployeeSelect");
+    if (!select) return;
+    const employees = [...state.employees]
+      .filter(row => row.employment_status !== "resigned" || row.id === selectedId)
+      .sort((a,b) => String(a.full_name || "").localeCompare(String(b.full_name || ""), "vi"));
+    select.innerHTML = '<option value="">Chọn nhân sự...</option>' + employees.map(employee => `<option value="${employee.id}" ${employee.id === selectedId ? "selected" : ""}>${escapeHtml(employee.employee_code || "CHƯA MÃ")} — ${escapeHtml(employee.full_name || "")}</option>`).join("");
+  }
+
+  function openDocumentLinkModal(documentRow) {
+    state.activeDocument = documentRow;
+    populateDocumentEmployeeSelect(documentRow.employee_id || "");
+    if ($("documentLinkFileName")) $("documentLinkFileName").textContent = documentRow.file_name || "Tài liệu";
+    if ($("documentLinkType")) $("documentLinkType").value = documentRow.document_type || "other";
+    if ($("documentSetPrimaryPortrait")) $("documentSetPrimaryPortrait").checked = Boolean(documentRow.is_primary);
+    showMessage($("documentLinkMessage"), "");
+    openModal("documentLinkModal");
+  }
+
+  function closeDocumentLinkModal() {
+    closeModal("documentLinkModal");
+    state.activeDocument = null;
+  }
+
+  async function saveManualDocumentLink() {
+    const documentRow = state.activeDocument;
+    if (!documentRow) return;
+    const employeeId = $("documentEmployeeSelect")?.value || "";
+    if (!employeeId) return showMessage($("documentLinkMessage"), "Vui lòng chọn nhân sự.", "err");
+    const button = $("saveDocumentLinkBtn");
+    setLoading(button, true, "Đang lưu...");
+    try {
+      const payload = {
+        employee_id: employeeId,
+        document_type: $("documentLinkType")?.value || "other",
+        match_method: "manual",
+        match_confidence: 100,
+        verification_status: "verified",
+        candidate_employee_ids: [employeeId],
+        matched_by: state.user.id,
+        verified_by: state.user.id,
+        verified_at: new Date().toISOString(),
+        is_primary: false
+      };
+      const { error } = await supabase.from("employee_documents").update(payload).eq("id", documentRow.id);
+      if (error) throw error;
+      if (documentRow.is_primary && documentRow.employee_id && (documentRow.employee_id !== employeeId || !$("documentSetPrimaryPortrait")?.checked)) {
+        await supabase.from("employees").update({ photo_url: null, updated_at: new Date().toISOString() }).eq("id", documentRow.employee_id);
+      }
+      if (payload.document_type === "portrait" && $("documentSetPrimaryPortrait")?.checked) {
+        const { error: primaryError } = await supabase.rpc("set_primary_employee_portrait", { p_document_id: documentRow.id });
+        if (primaryError) throw primaryError;
+      }
+      logEmployeeDocumentAction("link", documentRow, { employee_id: employeeId, document_type: payload.document_type });
+      closeDocumentLinkModal();
+      toast("Đã xác nhận liên kết tài liệu.");
+      await loadEmployeeDocumentsPage();
+    } catch (error) {
+      showMessage($("documentLinkMessage"), migrationError(error), "err");
+    } finally { setLoading(button, false); }
+  }
+
+  async function unlinkEmployeeDocument(documentRow) {
+    if (!window.confirm(`Gỡ liên kết nhân sự khỏi file “${documentRow.file_name}”?`)) return;
+    const wasPrimaryEmployeeId = documentRow.is_primary ? documentRow.employee_id : null;
+    const { error } = await supabase.from("employee_documents").update({
+      employee_id: null,
+      is_primary: false,
+      match_method: "unmatched",
+      match_confidence: 0,
+      verification_status: "unmatched",
+      candidate_employee_ids: [],
+      matched_by: state.user.id,
+      verified_by: null,
+      verified_at: null
+    }).eq("id", documentRow.id);
+    if (error) return toast(migrationError(error), "err");
+    if (wasPrimaryEmployeeId) await supabase.from("employees").update({ photo_url: null, updated_at: new Date().toISOString() }).eq("id", wasPrimaryEmployeeId);
+    logEmployeeDocumentAction("unlink", documentRow);
+    toast("Đã gỡ liên kết tài liệu.");
+    await loadEmployeeDocumentsPage();
+  }
+
+  async function rejectEmployeeDocument(documentRow) {
+    if (!window.confirm(`Loại file “${documentRow.file_name}” khỏi hàng chờ đối chiếu?`)) return;
+    const wasPrimaryEmployeeId = documentRow.is_primary ? documentRow.employee_id : null;
+    const { error } = await supabase.from("employee_documents").update({ verification_status: "rejected", is_primary: false, verified_by: state.user.id, verified_at: new Date().toISOString() }).eq("id", documentRow.id);
+    if (error) return toast(migrationError(error), "err");
+    if (wasPrimaryEmployeeId) await supabase.from("employees").update({ photo_url: null, updated_at: new Date().toISOString() }).eq("id", wasPrimaryEmployeeId);
+    logEmployeeDocumentAction("reject", documentRow);
+    toast("Đã loại file khỏi hàng chờ.");
+    await loadEmployeeDocumentsPage();
+  }
+
+  async function setPrimaryEmployeePortrait(documentRow) {
+    const { error } = await supabase.rpc("set_primary_employee_portrait", { p_document_id: documentRow.id });
+    if (error) return toast(migrationError(error), "err");
+    logEmployeeDocumentAction("set_primary_portrait", documentRow, { employee_id: documentRow.employee_id });
+    toast("Đã đặt ảnh chân dung chính.");
+    await loadEmployeeDocumentsPage();
+  }
+
+  function employeeDocumentCards(documents) {
+    if (!documents.length) return '<div class="empty-row">Chưa có tài liệu được liên kết.</div>';
+    return `<div class="employee-document-cards">${documents.map(row => {
+      const thumb = row.drive_thumbnail_url && /^image\//i.test(row.mime_type || "")
+        ? `<img src="${escapeHtml(row.drive_thumbnail_url)}" alt="" loading="lazy" referrerpolicy="no-referrer"/>`
+        : `<span class="employee-document-card-icon"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v5h5"></path></svg></span>`;
+      return `<a class="employee-document-card ${row.is_primary ? "is-primary" : ""}" href="${escapeHtml(row.drive_view_url || `https://drive.google.com/open?id=${row.drive_file_id}`)}" target="_blank" rel="noopener noreferrer">${thumb}<span><b>${escapeHtml(DOCUMENT_TYPE_LABELS[row.document_type] || row.document_type)}</b><small>${escapeHtml(row.file_name || "")}</small></span>${row.is_primary ? '<em>Ảnh chính</em>' : ""}</a>`;
+    }).join("")}</div>`;
+  }
+
   const EMPLOYEE_EDIT_FIELDS = [
     ["employee_code", "Mã nhân sự"], ["full_name", "Họ tên"], ["nickname", "Nick Name"], ["department", "Phòng ban"], ["area", "Khu vực"], ["branch", "Chi nhánh"], ["team", "Team"],
     ["title", "Chức danh"], ["employment_level", "Cấp bậc"], ["employment_type", "Loại công việc"], ["work_email", "Email công việc"],
@@ -1960,9 +2680,14 @@
     if (!employee) return;
     state.activeEmployee = employee;
     state.activeEmployeePrivate = null;
+    state.activeEmployeeDocuments = [];
     if (isHR()) {
-      const { data } = await supabase.from("employee_private").select("*").eq("employee_id", id).maybeSingle();
-      state.activeEmployeePrivate = data || {};
+      const [privateRes, documentsRes] = await Promise.all([
+        supabase.from("employee_private").select("*").eq("employee_id", id).maybeSingle(),
+        supabase.from("employee_documents").select("*").eq("employee_id", id).eq("verification_status", "verified").order("is_primary", { ascending: false }).order("document_type")
+      ]);
+      state.activeEmployeePrivate = privateRes.data || {};
+      state.activeEmployeeDocuments = documentsRes.data || [];
     }
     renderEmployeeDetail(false);
     openModal("employeeDetailModal");
@@ -1993,6 +2718,7 @@
         return `<div class="employee-field ${editMode ? "is-editing" : ""}"><span>${escapeHtml(label)}</span>${editMode ? employeeFieldInput(`private.${field}`, value, type) : `<b>${escapeHtml(shown || "—")}</b>`}</div>`;
       }).join("");
       html += `<div class="employee-private-section"><p class="eyebrow">Dữ liệu riêng tư – chỉ HR/Admin</p><div class="employee-detail-grid">${privateHtml}</div></div>`;
+      if (!editMode) html += `<div class="employee-private-section employee-documents-section"><p class="eyebrow">Hồ sơ đính kèm – chỉ HR/Admin</p>${employeeDocumentCards(state.activeEmployeeDocuments || [])}</div>`;
     }
     $("employeeDetailContent").innerHTML = html;
     const editable = canEditEmployeeRecords();
@@ -2796,30 +3522,72 @@
     finally { setLoading(button, false); }
   }
 
+  function browserNotificationsMuted() {
+    return localStorage.getItem("uws_browser_notifications_muted") === "1";
+  }
+
+  function updateBrowserNotificationButton() {
+    const button = $("enableBrowserNotificationsBtn");
+    if (!button) return;
+    if (!("Notification" in window)) {
+      button.textContent = "Trình duyệt không hỗ trợ thông báo";
+      button.disabled = true;
+      return;
+    }
+    button.disabled = false;
+    button.textContent = Notification.permission === "granted" && !browserNotificationsMuted()
+      ? "Tắt thông báo trình duyệt"
+      : "Bật thông báo trình duyệt";
+  }
+
   async function enableBrowserNotifications() {
     if (!("Notification" in window)) return toast("Trình duyệt không hỗ trợ thông báo hệ thống.", "warn");
-    const permission = await Notification.requestPermission();
+    if (Notification.permission === "granted" && !browserNotificationsMuted()) {
+      localStorage.setItem("uws_browser_notifications_muted", "1");
+      updateBrowserNotificationButton();
+      return toast("Đã tắt thông báo trình duyệt trong HR Portal.");
+    }
+    const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+    if (permission === "granted") localStorage.removeItem("uws_browser_notifications_muted");
+    updateBrowserNotificationButton();
     toast(permission === "granted" ? "Đã bật thông báo trình duyệt." : "Bạn chưa cấp quyền thông báo.", permission === "granted" ? "ok" : "warn");
   }
 
   function registerServiceWorker() {
     if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js").catch(()=>{});
+    updateBrowserNotificationButton();
   }
 
-  function notifyBrowser(title, body) {
-    if (Notification.permission !== "granted" || document.visibilityState === "visible") return;
-    navigator.serviceWorker?.ready.then(reg => reg.showNotification(title, { body, icon: "./icons/icon-192.png", badge: "./icons/icon-192.png" })).catch(()=>{});
+  function notifyBrowser(title, body, tag = "unite-hr") {
+    if (browserNotificationsMuted() || Notification.permission !== "granted" || document.visibilityState === "visible") return;
+    const dedupeKey = `uws_notify_${tag}`;
+    const lastAt = Number(sessionStorage.getItem(dedupeKey) || 0);
+    if (Date.now() - lastAt < 5 * 60 * 1000) return;
+    sessionStorage.setItem(dedupeKey, String(Date.now()));
+    navigator.serviceWorker?.ready.then(reg => reg.showNotification(title, {
+      body,
+      icon: "./icons/icon-192.png",
+      badge: "./icons/icon-192.png",
+      tag,
+      renotify: false
+    })).catch(()=>{});
   }
 
   function subscribeRealtime() {
     const recipientChannel = supabase.channel(`portal-announcements-${state.user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "announcement_recipients", filter: `recipient_id=eq.${state.user.id}` }, () => { loadAnnouncements(); loadDashboard(); notifyBrowser("Unite HR Portal", "Bạn có thông báo mới."); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "announcement_recipients", filter: `recipient_id=eq.${state.user.id}` }, payload => {
+        loadAnnouncements();
+        loadDashboard();
+        notifyBrowser("Unite HR Portal", "Bạn có thông báo mới.", `announcement-${payload.new?.announcement_id || payload.new?.id || "new"}`);
+      })
       .subscribe();
     const caseChannel = supabase.channel(`portal-cases-${state.user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "hr_cases" }, () => { loadCases(); loadDashboard(); })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "hr_case_messages" }, payload => {
         if (state.activeCase?.id === payload.new.case_id) loadCaseConversation(state.activeCase.id);
-        notifyBrowser("Phản hồi mới", "Một hồ sơ HR vừa có phản hồi mới.");
+        if (payload.new?.sender_id !== state.user.id) {
+          notifyBrowser("Phản hồi mới", "Một hồ sơ HR vừa có phản hồi mới.", `case-message-${payload.new?.id || payload.new?.case_id || "new"}`);
+        }
       }).subscribe();
     state.subscriptions.push(recipientChannel, caseChannel);
   }

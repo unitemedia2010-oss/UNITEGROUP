@@ -908,6 +908,7 @@ input[type="file"]::file-selector-button {
   .portal-topbar-copy .eyebrow { display: flex; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .portal-topbar-copy h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; }
   .portal-topbar-actions { min-width: 42px; }
+  .portal-topbar-actions #portalRefreshBtn { display: none !important; }
   .portal-topbar-actions #portalInboxBtn { display: inline-flex !important; }
   .portal-page .portal-content { padding: 11px; }
   .employee-grid-toolbar { padding: 13px !important; }

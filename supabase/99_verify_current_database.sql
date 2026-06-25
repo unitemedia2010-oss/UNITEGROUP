@@ -61,3 +61,25 @@ select employee_code, full_name, department, area, title, employment_status
 from public.employees
 where lower(coalesce(department,'')) in ('blđ','bld')
 order by source_row_order nulls last, employee_code;
+
+-- V37 employee document library
+select
+  to_regclass('public.hr_document_settings') as hr_document_settings,
+  to_regclass('public.employee_documents') as employee_documents,
+  to_regclass('public.employee_document_summary_v37') as employee_document_summary_v37;
+
+select proname
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and proname in ('set_primary_employee_portrait','touch_employee_document_updated_at')
+order by proname;
+
+select verification_status, document_type, count(*) as total
+from public.employee_documents
+group by verification_status, document_type
+order by verification_status, document_type;
+
+select file_name, employee_code, full_name, document_type, match_method, match_confidence, verification_status
+from public.employee_document_summary_v37
+where verification_status in ('pending','unmatched')
+order by match_confidence desc, file_name
+limit 100;

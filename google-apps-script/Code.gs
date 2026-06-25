@@ -35,6 +35,7 @@ function onOpen() {
     .addItem('Đồng bộ tất cả dòng đã sửa', 'pushAllChangedRowsToSupabase')
     .addSeparator()
     .addItem('Cấu hình email HR xem file', 'setHrViewerEmails')
+    .addItem('Cấu hình thư mục hồ sơ nhân sự', 'setEmployeeDocumentFolders')
     .addItem('Xem cấu hình', 'showWorkspaceConfig')
     .addItem('Kiểm tra kết nối', 'testWorkspaceConnection')
     .addToUi();
@@ -75,6 +76,13 @@ function setupUniteHrWorkspace() {
     '99_ARCHIVE'
   ];
   folders.forEach(name => getOrCreateChildFolder_(root, name));
+  const employeeDocsRoot = getOrCreateChildFolder_(root, '01_HO_SO_NHAN_SU');
+  const cccdFolder = getOrCreateChildFolder_(employeeDocsRoot, '01_CCCD');
+  const portraitFolder = getOrCreateChildFolder_(employeeDocsRoot, '02_CHAN_DUNG');
+  const extractedFolder = getOrCreateChildFolder_(employeeDocsRoot, '03_DOCX_EXTRACTED');
+  props.setProperty('CCCD_FOLDER_ID', props.getProperty('CCCD_FOLDER_ID') || cccdFolder.getId());
+  props.setProperty('PORTRAIT_FOLDER_ID', props.getProperty('PORTRAIT_FOLDER_ID') || portraitFolder.getId());
+  props.setProperty('DOCX_EXTRACT_FOLDER_ID', props.getProperty('DOCX_EXTRACT_FOLDER_ID') || extractedFolder.getId());
 
   const ss = getSpreadsheet_();
   ensureEmployeeSheet_(ss);
@@ -88,11 +96,16 @@ function setupUniteHrWorkspace() {
     rootFolderUrl: root.getUrl()
   });
 
-  SpreadsheetApp.getUi().alert(
-    'Thiết lập hoàn tất',
-    'Đã tạo cấu trúc Sheet và thư mục Drive.\n\nBước tiếp theo: Deploy Apps Script dạng Web app, sau đó chép Web app URL và Integration Secret sang Supabase Secrets.',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+  try {
+    const ui = SpreadsheetApp.getUi();
+    ui.alert(
+      'Thiết lập hoàn tất',
+      'Đã tạo cấu trúc Sheet và thư mục Drive.\n\nBước tiếp theo: Deploy Apps Script dạng Web app, sau đó chép Web app URL và Integration Secret sang Supabase Secrets.',
+      ui.ButtonSet.OK
+    );
+  } catch (error) {
+    console.log('Thiết lập hoàn tất. Đã tạo cấu trúc Sheet và thư mục Drive. Tiếp theo hãy deploy Web app và cập nhật Supabase Secrets.');
+  }
 }
 
 function setHrViewerEmails() {
@@ -118,7 +131,10 @@ function showWorkspaceConfig() {
     ['SUPABASE_FUNCTION_URL', props.getProperty('SUPABASE_FUNCTION_URL') || UNITE_HR.SUPABASE_FUNCTION_URL],
     ['DRIVE_ROOT_FOLDER_ID', props.getProperty('DRIVE_ROOT_FOLDER_ID') || 'Chưa thiết lập'],
     ['INTEGRATION_SECRET', props.getProperty('INTEGRATION_SECRET') || 'Chưa thiết lập'],
-    ['HR_VIEWER_EMAILS', props.getProperty('HR_VIEWER_EMAILS') || 'Chưa cấu hình']
+    ['HR_VIEWER_EMAILS', props.getProperty('HR_VIEWER_EMAILS') || 'Chưa cấu hình'],
+    ['CCCD_FOLDER_ID', props.getProperty('CCCD_FOLDER_ID') || 'Chưa cấu hình'],
+    ['PORTRAIT_FOLDER_ID', props.getProperty('PORTRAIT_FOLDER_ID') || 'Chưa cấu hình'],
+    ['DOCX_EXTRACT_FOLDER_ID', props.getProperty('DOCX_EXTRACT_FOLDER_ID') || 'Chưa cấu hình']
   ];
   const text = values.map(row => `${row[0]}: ${row[1]}`).join('\n');
   SpreadsheetApp.getUi().alert('Cấu hình UNITE HR', text, SpreadsheetApp.getUi().ButtonSet.OK);
@@ -255,6 +271,12 @@ function doPost(e) {
         return jsonOutput_({ ok: true, rootFolderId: getOrCreateRootFolder_().getId() });
       case 'replace_employee_sheet':
         return jsonOutput_(replaceEmployeeSheetFromApp_(body));
+      case 'scan_employee_documents':
+        return jsonOutput_(scanEmployeeDocuments_(body));
+      case 'open_employee_document':
+        return jsonOutput_(openEmployeeDocument_(body));
+      case 'set_employee_document_folders':
+        return jsonOutput_(setEmployeeDocumentFoldersFromApi_(body));
       default:
         return jsonOutput_({ ok: false, message: 'Action không được hỗ trợ.' });
     }
@@ -511,13 +533,16 @@ function ensureConfigSheet_(ss, rootFolderId) {
     ['SUPABASE_FUNCTION_URL', UNITE_HR.SUPABASE_FUNCTION_URL, 'Edge Function trung gian'],
     ['DRIVE_ROOT_FOLDER_ID', rootFolderId, 'Thư mục gốc UNITE HR'],
     ['HR_VIEWER_EMAILS', props.getProperty('HR_VIEWER_EMAILS') || '', 'Danh sách email HR, cách nhau bằng dấu phẩy'],
+    ['CCCD_FOLDER_ID', props.getProperty('CCCD_FOLDER_ID') || '', 'Thư mục CCCD nhân sự'],
+    ['PORTRAIT_FOLDER_ID', props.getProperty('PORTRAIT_FOLDER_ID') || '', 'Thư mục ảnh chân dung nhân sự'],
+    ['DOCX_EXTRACT_FOLDER_ID', props.getProperty('DOCX_EXTRACT_FOLDER_ID') || '', 'Thư mục ảnh trích từ DOCX/Google Docs'],
     ['INTEGRATION_SECRET', props.getProperty('INTEGRATION_SECRET') || '', 'Không chia sẻ công khai']
   ];
   sheet.clear();
   sheet.getRange(1, 1, rows.length, 3).setValues(rows);
   sheet.setFrozenRows(1);
   sheet.autoResizeColumns(1, 3);
-  sheet.hideRows(6);
+  sheet.hideRows(rows.length);
   return sheet;
 }
 
@@ -700,4 +725,328 @@ function chunk_(items, size) {
   const chunks = [];
   for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
   return chunks;
+}
+
+/* =========================================================
+   V37 - EMPLOYEE DOCUMENT LIBRARY
+   Scans Drive folders, extracts images from DOCX / Google Docs,
+   and returns metadata to the protected Supabase Edge Function.
+========================================================= */
+
+function setEmployeeDocumentFolders() {
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+  const cccd = ui.prompt(
+    'Thư mục CCCD',
+    'Dán URL hoặc Folder ID của thư mục CCCD. Để trống để giữ cấu hình hiện tại.',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (cccd.getSelectedButton() !== ui.Button.OK) return;
+  const portrait = ui.prompt(
+    'Thư mục ảnh chân dung',
+    'Dán URL hoặc Folder ID của thư mục ảnh chân dung. Để trống để giữ cấu hình hiện tại.',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (portrait.getSelectedButton() !== ui.Button.OK) return;
+
+  const cccdId = folderIdFromInput_(cccd.getResponseText());
+  const portraitId = folderIdFromInput_(portrait.getResponseText());
+  if (cccdId) props.setProperty('CCCD_FOLDER_ID', cccdId);
+  if (portraitId) props.setProperty('PORTRAIT_FOLDER_ID', portraitId);
+  ui.alert('Đã lưu cấu hình thư mục hồ sơ nhân sự.');
+}
+
+function setEmployeeDocumentFoldersFromApi_(body) {
+  const props = PropertiesService.getScriptProperties();
+  const cccdId = folderIdFromInput_(body.cccdFolderId || body.cccd_folder_id || '');
+  const portraitId = folderIdFromInput_(body.portraitFolderId || body.portrait_folder_id || '');
+  const otherId = folderIdFromInput_(body.otherFolderId || body.other_folder_id || '');
+  if (cccdId) props.setProperty('CCCD_FOLDER_ID', cccdId);
+  if (portraitId) props.setProperty('PORTRAIT_FOLDER_ID', portraitId);
+  if (otherId) props.setProperty('OTHER_DOCUMENT_FOLDER_ID', otherId);
+  return {
+    ok: true,
+    cccdFolderId: props.getProperty('CCCD_FOLDER_ID') || '',
+    portraitFolderId: props.getProperty('PORTRAIT_FOLDER_ID') || '',
+    otherFolderId: props.getProperty('OTHER_DOCUMENT_FOLDER_ID') || ''
+  };
+}
+
+function scanEmployeeDocuments_(body) {
+  const props = PropertiesService.getScriptProperties();
+  const sourceKind = String(body.sourceKind || body.source_kind || 'mixed').toLowerCase();
+  const configuredId = sourceKind === 'cccd'
+    ? props.getProperty('CCCD_FOLDER_ID')
+    : sourceKind === 'portrait'
+      ? props.getProperty('PORTRAIT_FOLDER_ID')
+      : props.getProperty('OTHER_DOCUMENT_FOLDER_ID');
+  const folderId = folderIdFromInput_(body.folderId || body.folder_id || configuredId || '');
+  if (!folderId) throw new Error('Chưa có Folder ID để quét.');
+
+  const recursive = body.recursive !== false;
+  const extractDocxImages = body.extractDocxImages !== false && body.extract_docx_images !== false;
+  const maxFiles = Math.min(Math.max(Number(body.maxFiles || body.max_files || 80), 1), 150);
+  const skipFileIds = new Set(Array.isArray(body.skipFileIds || body.skip_file_ids) ? (body.skipFileIds || body.skip_file_ids).map(String) : []);
+  const rootFolder = DriveApp.getFolderById(folderId);
+  const extractionFolder = getDocumentExtractionFolder_();
+  const result = [];
+  const stats = { scanned: 0, skipped: 0, docs: 0, images: 0, extracted: 0, errors: 0 };
+
+  walkEmployeeDocumentFolder_(rootFolder, rootFolder.getName(), recursive, maxFiles, function(file, path) {
+    if (result.length >= maxFiles) return false;
+    stats.scanned++;
+    if (skipFileIds.has(file.getId())) {
+      stats.skipped++;
+      return true;
+    }
+    try {
+      const metadata = driveFileMetadata_(file, path, sourceKind);
+      const mime = metadata.mimeType;
+      const isGoogleDoc = mime === MimeType.GOOGLE_DOCS || mime === 'application/vnd.google-apps.document';
+      const isDocx = mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(metadata.fileName);
+
+      if (isGoogleDoc) {
+        stats.docs++;
+        const parsed = parseGoogleDocument_(file, extractionFolder, extractDocxImages, sourceKind, path);
+        metadata.textExcerpt = parsed.textExcerpt;
+        metadata.embeddedImageCount = parsed.images.length;
+        result.push(metadata);
+        parsed.images.forEach(item => {
+          if (result.length < maxFiles) {
+            result.push(item);
+            stats.extracted++;
+          }
+        });
+      } else if (isDocx) {
+        stats.docs++;
+        const parsed = parseDocxFile_(file, extractionFolder, extractDocxImages, sourceKind, path);
+        metadata.textExcerpt = parsed.textExcerpt;
+        metadata.embeddedImageCount = parsed.images.length;
+        result.push(metadata);
+        parsed.images.forEach(item => {
+          if (result.length < maxFiles) {
+            result.push(item);
+            stats.extracted++;
+          }
+        });
+      } else {
+        if (/^image\//i.test(mime)) stats.images++;
+        result.push(metadata);
+      }
+    } catch (error) {
+      stats.errors++;
+      result.push({
+        driveFileId: file.getId(),
+        fileName: file.getName(),
+        mimeType: file.getMimeType(),
+        sourceFolder: path,
+        sourceKind: sourceKind,
+        error: error.message || String(error)
+      });
+    }
+    return result.length < maxFiles;
+  });
+
+  writeSyncLog_('employee_document_scan', stats.errors ? 'partial' : 'completed', stats.scanned, result.length, stats.errors, {
+    folderId: folderId,
+    sourceKind: sourceKind,
+    extracted: stats.extracted
+  });
+
+  return {
+    ok: true,
+    folderId: folderId,
+    folderName: rootFolder.getName(),
+    sourceKind: sourceKind,
+    files: result,
+    stats: stats,
+    truncated: result.length >= maxFiles
+  };
+}
+
+function openEmployeeDocument_(body) {
+  const fileId = String(body.fileId || body.file_id || '').trim();
+  if (!fileId) throw new Error('Thiếu fileId.');
+  const file = DriveApp.getFileById(fileId);
+  return {
+    ok: true,
+    fileId: file.getId(),
+    fileName: file.getName(),
+    mimeType: file.getMimeType(),
+    url: file.getUrl(),
+    thumbnailUrl: driveThumbnailUrl_(file.getId())
+  };
+}
+
+function walkEmployeeDocumentFolder_(folder, path, recursive, maxFiles, visitor) {
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    if (maxFiles <= 0) return;
+    const keepGoing = visitor(files.next(), path);
+    maxFiles--;
+    if (keepGoing === false) return;
+  }
+  if (!recursive) return;
+  const folders = folder.getFolders();
+  while (folders.hasNext()) {
+    const child = folders.next();
+    walkEmployeeDocumentFolder_(child, `${path}/${child.getName()}`, recursive, maxFiles, visitor);
+  }
+}
+
+function driveFileMetadata_(file, path, sourceKind) {
+  return {
+    driveFileId: file.getId(),
+    parentDriveFileId: null,
+    driveFolderId: firstParentFolderId_(file),
+    driveViewUrl: file.getUrl(),
+    driveThumbnailUrl: driveThumbnailUrl_(file.getId()),
+    fileName: file.getName(),
+    mimeType: file.getMimeType(),
+    sizeBytes: Number(file.getSize() || 0),
+    sourceFolder: path,
+    sourceKind: sourceKind,
+    isExtracted: false,
+    updatedAt: file.getLastUpdated() ? file.getLastUpdated().toISOString() : null,
+    description: file.getDescription() || ''
+  };
+}
+
+function parseGoogleDocument_(file, extractionFolder, extractImages, sourceKind, sourcePath) {
+  const doc = DocumentApp.openById(file.getId());
+  const body = doc.getBody();
+  const textExcerpt = String(body.getText() || '').replace(/\s+/g, ' ').trim().slice(0, 6000);
+  const images = [];
+  if (extractImages) {
+    let inlineImages = [];
+    try { inlineImages = body.getImages(); } catch (error) { inlineImages = []; }
+    inlineImages.forEach(function(image, index) {
+      try {
+        const blob = image.getBlob();
+        const extracted = createOrReuseExtractedImage_(extractionFolder, file, blob, index + 1, sourceKind, sourcePath);
+        images.push(extracted);
+      } catch (error) {
+        console.warn(`Không trích được ảnh ${index + 1} từ Google Docs ${file.getName()}: ${error.message}`);
+      }
+    });
+  }
+  return { textExcerpt: textExcerpt, images: images };
+}
+
+function parseDocxFile_(file, extractionFolder, extractImages, sourceKind, sourcePath) {
+  const blobs = Utilities.unzip(file.getBlob());
+  let textExcerpt = '';
+  const images = [];
+  blobs.forEach(function(blob) {
+    const name = String(blob.getName() || '');
+    if (/word\/document\.xml$/i.test(name)) {
+      textExcerpt = decodeDocxXmlText_(blob.getDataAsString()).slice(0, 6000);
+    }
+  });
+  if (extractImages) {
+    blobs.filter(function(blob) { return /word\/media\//i.test(String(blob.getName() || '')); })
+      .forEach(function(blob, index) {
+        try {
+          const extracted = createOrReuseExtractedImage_(extractionFolder, file, blob, index + 1, sourceKind, sourcePath);
+          images.push(extracted);
+        } catch (error) {
+          console.warn(`Không trích được ảnh ${index + 1} từ DOCX ${file.getName()}: ${error.message}`);
+        }
+      });
+  }
+  return { textExcerpt: textExcerpt, images: images };
+}
+
+function createOrReuseExtractedImage_(folder, sourceFile, blob, index, sourceKind, sourcePath) {
+  const sourceId = sourceFile.getId();
+  const extension = extensionForMime_(blob.getContentType(), blob.getName());
+  const safeBase = sanitizeFileName_(sourceFile.getName()).replace(/\.[^.]+$/, '').slice(0, 80);
+  const derivedName = `${sourceId}__IMG_${String(index).padStart(2, '0')}__${safeBase}.${extension}`;
+  const existing = folder.getFilesByName(derivedName);
+  const file = existing.hasNext() ? existing.next() : folder.createFile(blob.copyBlob().setName(derivedName));
+  file.setDescription(JSON.stringify({
+    parentDriveFileId: sourceId,
+    sourceFileName: sourceFile.getName(),
+    imageIndex: index,
+    extractedAt: new Date().toISOString()
+  }));
+  uniqueStrings_(getViewerEmails_()).forEach(function(email) {
+    try { if (email) file.addViewer(email); } catch (error) { console.warn(error.message); }
+  });
+  return {
+    driveFileId: file.getId(),
+    parentDriveFileId: sourceId,
+    driveFolderId: folder.getId(),
+    driveViewUrl: file.getUrl(),
+    driveThumbnailUrl: driveThumbnailUrl_(file.getId()),
+    fileName: file.getName(),
+    mimeType: file.getMimeType(),
+    sizeBytes: Number(file.getSize() || 0),
+    sourceFolder: `${sourcePath}/[TRÍCH TỪ ${sourceFile.getName()}]`,
+    sourceKind: sourceKind,
+    isExtracted: true,
+    updatedAt: file.getLastUpdated() ? file.getLastUpdated().toISOString() : null,
+    parentFileName: sourceFile.getName(),
+    imageIndex: index
+  };
+}
+
+function getDocumentExtractionFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const configured = props.getProperty('DOCX_EXTRACT_FOLDER_ID');
+  if (configured) {
+    try { return DriveApp.getFolderById(configured); } catch (error) { console.warn(error.message); }
+  }
+  const root = getOrCreateRootFolder_();
+  const employeeRoot = getOrCreateChildFolder_(root, '01_HO_SO_NHAN_SU');
+  const folder = getOrCreateChildFolder_(employeeRoot, '03_DOCX_EXTRACTED');
+  props.setProperty('DOCX_EXTRACT_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+function folderIdFromInput_(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/[-\w]{20,}/);
+  return match ? match[0] : raw;
+}
+
+function driveThumbnailUrl_(fileId) {
+  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w800`;
+}
+
+function firstParentFolderId_(file) {
+  try {
+    const parents = file.getParents();
+    return parents.hasNext() ? parents.next().getId() : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function extensionForMime_(mimeType, originalName) {
+  const mime = String(mimeType || '').toLowerCase();
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/bmp') return 'bmp';
+  if (mime === 'image/tiff') return 'tif';
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return 'jpg';
+  const match = String(originalName || '').match(/\.([a-z0-9]{2,5})$/i);
+  return match ? match[1].toLowerCase() : 'jpg';
+}
+
+function decodeDocxXmlText_(xml) {
+  return String(xml || '')
+    .replace(/<w:tab\/?\s*>/gi, ' ')
+    .replace(/<w:br\/?\s*>/gi, '\n')
+    .replace(/<\/w:p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }

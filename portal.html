@@ -7,14 +7,14 @@
 <meta content="#741f2b" name="theme-color"/>
 <title>Unite HR Portal</title>
 <link href="./manifest.webmanifest" rel="manifest"/>
-<link href="./css/app.css?v=37" rel="stylesheet"/><link href="./css/v35.css?v=37" rel="stylesheet"/><link href="./css/v36.css?v=37" rel="stylesheet"/>
+<link href="./css/app.css?v=41" rel="stylesheet"/><link href="./css/v35.css?v=35" rel="stylesheet"/><link href="./css/v36.css?v=36" rel="stylesheet"/><link href="./css/v37.css?v=38" rel="stylesheet"/><link href="./css/v39.css?v=39" rel="stylesheet"/><link href="./css/v40.css?v=44" rel="stylesheet"/>
 </head>
 <body class="portal-page">
 <div aria-live="polite" class="toast-host" id="toastHost"></div>
 <div class="portal-shell">
 <aside class="portal-sidebar" id="portalSidebar">
 <div class="portal-brand">
-<div class="brand-badge"><img alt="Unite Group" class="brand-logo" src="./icons/unite-gold-transparent.png"/><span>UNITE</span></div>
+<div class="brand-badge"><img alt="Unite Group" class="brand-logo" src="./icons/unite-gold.png"/><span>UNITE</span></div>
 <div><strong>HR Portal</strong><small>Workforce &amp; Communication</small></div>
 </div>
 <div class="portal-user-card">
@@ -26,6 +26,7 @@
 <button class="portal-nav-item" data-page="announcements"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span>Thông báo <b class="nav-count hidden" id="navUnreadAnnouncements">0</b></button>
 <button class="portal-nav-item" data-page="cases"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><rect height="18" rx="2" width="16" x="4" y="3"></rect><path d="M8 8h8M8 12h8M8 16h5"></path></svg></span>Yêu cầu HR <b class="nav-count hidden" id="navOpenCases">0</b></button>
 <button class="portal-nav-item" data-page="my-profile"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></span>Hồ sơ của tôi</button>
+<button class="portal-nav-item hr-only hidden" data-page="documents"><span class="portal-nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"></path><path d="M14 3v5h5M9 12h6M9 16h6"></path></svg></span>Hồ sơ tài liệu <b class="nav-count hidden" id="navDocumentReviewCount">0</b></button>
 <button class="portal-nav-item manager-nav" data-page="employees"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>Nhân sự</button>
 <button class="portal-nav-item manager-nav" data-page="organization"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><rect height="5" rx="1" width="6" x="9" y="3"></rect><rect height="5" rx="1" width="6" x="3" y="16"></rect><rect height="5" rx="1" width="6" x="15" y="16"></rect><path d="M12 8v4M6 16v-4h12v4"></path></svg></span>Tổ chức</button>
 <button class="portal-nav-item hr-only hidden" data-page="import"><span class="portal-nav-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M4 14v6h16v-6"></path></svg></span>Nhập dữ liệu Excel</button>
@@ -44,6 +45,7 @@
 <h1 id="portalPageTitle">Tổng quan</h1>
 </div>
 <div class="portal-topbar-actions">
+<button aria-label="Làm mới dữ liệu" class="btn ghost topbar-action-btn" id="portalRefreshBtn" type="button"><span class="btn-line-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M20 11a8 8 0 1 0 2 5.3"></path><path d="M20 4v7h-7"></path></svg></span><span class="btn-label">Làm mới</span></button>
 <button aria-label="Thông báo" class="btn ghost icon-btn topbar-action-btn" id="portalInboxBtn" type="button"><span class="btn-line-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span><b class="notif-badge hidden" id="portalInboxBadge">0</b></button>
 </div>
 </header>
@@ -161,6 +163,56 @@
 <div class="section-head portal-section-head"><div><p class="eyebrow">Thông tin cá nhân</p><h2>Hồ sơ của tôi</h2><p class="muted">Kiểm tra thông tin đang lưu trên hệ thống. Nếu có sai sót, hãy gửi yêu cầu chỉnh sửa đến HR.</p></div><button class="btn primary" disabled="" id="openMyEmployeeDetailBtn">Xem &amp; báo chỉnh sửa</button></div>
 <div class="panel" id="myProfileContent"><div class="empty-row">Đang tải hồ sơ...</div></div>
 </section>
+<section class="portal-page-section hr-only-page hidden" id="page-documents">
+<div class="section-head portal-section-head document-page-head">
+  <div><p class="eyebrow">Kho hồ sơ nhân sự</p><h2>CCCD, ảnh chân dung &amp; DOCX</h2><p class="muted">Quét thư mục Google Drive, đối chiếu mã nhân sự trước rồi đến họ tên không phân biệt hoa/thường và dấu tiếng Việt. Tên gần đúng sẽ được gắn vào nhân sự phù hợp nhất và đánh dấu “Cần kiểm tra” để HR rà soát.</p></div>
+  <div class="actions"><button class="btn ghost" id="refreshEmployeeDocumentsBtn" type="button">Làm mới</button><button class="btn primary" id="scanAllEmployeeDocumentsBtn" type="button">Yêu cầu máy Media quét</button></div>
+</div>
+<div class="grid four document-metrics">
+  <article class="panel metric compact"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v5h5"></path></svg></div><div class="metric-copy"><span>Tổng file</span><b id="documentMetricTotal">0</b></div></article>
+  <article class="panel metric compact"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></svg></div><div class="metric-copy"><span>Đã liên kết</span><b id="documentMetricVerified">0</b></div></article>
+  <article class="panel metric compact"><div class="metric-icon"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle></svg></div><div class="metric-copy"><span>Cần xác nhận</span><b id="documentMetricPending">0</b></div></article>
+  <article class="panel metric compact"><div class="metric-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4M8 11h6"></path></svg></div><div class="metric-copy"><span>Chưa nhận diện</span><b id="documentMetricUnmatched">0</b></div></article>
+</div>
+<section class="panel document-settings-panel">
+  <div class="section-head compact-head"><div><p class="eyebrow">Nguồn Google Drive</p><h2>Thư mục quét hồ sơ</h2><p class="muted">Có thể dán URL thư mục hoặc Folder ID. Link Drive vẫn giữ quyền riêng tư; Portal không tạo liên kết công khai.</p></div><button class="btn secondary" id="saveDocumentSettingsBtn" type="button">Lưu cấu hình</button></div>
+  <div class="form-grid document-folder-grid">
+    <label>Thư mục CCCD<input id="documentCccdFolderInput" placeholder="URL hoặc Folder ID CCCD" type="text"/><small>Ưu tiên nhận diện mặt trước, mặt sau hoặc CCCD gộp.</small></label>
+    <label>Thư mục ảnh chân dung<input id="documentPortraitFolderInput" placeholder="URL hoặc Folder ID ảnh chân dung" type="text"/><small>Ảnh, DOCX hoặc Google Docs chứa ảnh đều dùng được.</small></label>
+    <label>Thư mục hồ sơ khác<input id="documentOtherFolderInput" placeholder="Không bắt buộc" type="text"/><small>Hợp đồng, chứng chỉ hoặc hồ sơ bổ sung.</small></label>
+    <label>Thư mục ảnh trích DOCX<input id="documentExtractedFolderInput" placeholder="Folder ID 03_DOCX_EXTRACTED" type="text"/><small>Python Worker lưu ảnh trích từ DOCX/Google Docs tại đây.</small></label>
+  </div>
+  <div class="document-setting-options">
+    <label class="inline-check"><input checked id="documentExtractDocx" type="checkbox"/> Trích ảnh bên trong DOCX và Google Docs</label>
+    <label class="inline-check"><input checked id="documentRecursiveScan" type="checkbox"/> Quét cả thư mục con</label>
+    <label class="inline-check"><input id="documentForceRescan" type="checkbox"/> Quét lại file đã xử lý để áp dụng thuật toán liên kết mới</label>
+  </div>
+  <div class="actions document-scan-actions"><button class="btn ghost" data-document-scan="cccd" type="button">Yêu cầu quét CCCD</button><button class="btn ghost" data-document-scan="portrait" type="button">Yêu cầu quét chân dung</button><button class="btn ghost" data-document-scan="other" type="button">Yêu cầu quét hồ sơ khác</button></div>
+  <p class="message" id="documentScanMessage"></p>
+</section>
+<section class="panel document-worker-panel">
+  <div class="document-worker-head">
+    <div><p class="eyebrow">Máy xử lý Media</p><h2>Python Worker</h2><p class="muted">Máy Media tự chạy khi đăng nhập Windows, quét theo giờ và nhận yêu cầu từ HR Portal.</p></div>
+    <span class="worker-status-badge offline" id="documentWorkerState">Chưa kết nối</span>
+  </div>
+  <div class="document-worker-grid">
+    <article><span>Máy xử lý</span><b id="documentWorkerHost">—</b><small id="documentWorkerLastSeen">Chưa có heartbeat</small></article>
+    <article><span>Trạng thái job</span><b id="documentJobStatus">Chưa có yêu cầu</b><small id="documentJobSource">—</small></article>
+    <article class="document-job-progress-card"><span>Tiến độ</span><b id="documentJobProgressText">0 / 0 file</b><div class="document-job-progress"><i id="documentJobProgressBar"></i></div></article>
+  </div>
+  <div class="document-worker-footer"><p id="documentJobMessage">Khi HR bấm quét, yêu cầu sẽ chờ đến lúc máy Media đang mở.</p><button class="btn ghost hidden" id="cancelDocumentScanBtn" type="button">Hủy yêu cầu đang chờ</button></div>
+</section>
+<section class="panel document-library-panel">
+  <div class="section-head compact-head"><div><p class="eyebrow">Đối chiếu &amp; xác minh</p><h2>Danh sách tài liệu</h2><p class="muted">Mã nhân viên khớp chính xác được ưu tiên cao nhất. Kết quả tên gần đúng được gắn tạm và hiển thị cảnh báo để HR kiểm tra.</p></div></div>
+  <div class="portal-filterbar document-filterbar">
+    <label>Tìm kiếm<input id="documentSearchInput" placeholder="Tên file, mã hoặc họ tên..." type="search"/></label>
+    <label>Loại tài liệu<select id="documentTypeFilter"><option value="">Tất cả</option><option value="portrait">Ảnh chân dung</option><option value="citizen_id_front">CCCD mặt trước</option><option value="citizen_id_back">CCCD mặt sau</option><option value="citizen_id_combined">CCCD gộp</option><option value="employee_dossier">Hồ sơ DOCX/Google Docs</option><option value="docx_image">Ảnh trích từ DOCX</option><option value="contract">Hợp đồng</option><option value="certificate">Chứng chỉ</option><option value="other">Khác</option></select></label>
+    <label>Trạng thái<select id="documentStatusFilter"><option value="">Tất cả</option><option value="verified">Đã liên kết</option><option value="pending">Cần xác nhận</option><option value="unmatched">Chưa nhận diện</option><option value="rejected">Đã loại</option></select></label>
+    <label>Nguồn<select id="documentSourceFilter"><option value="">Tất cả</option><option value="cccd">CCCD</option><option value="portrait">Chân dung</option><option value="other">Hồ sơ khác</option><option value="mixed">Hỗn hợp</option></select></label>
+  </div>
+  <div class="table-wrap document-table-wrap"><table class="document-table"><thead><tr><th>Tài liệu</th><th>Loại</th><th>Nhân sự liên kết</th><th>Độ tin cậy</th><th>Trạng thái</th><th>Nguồn</th><th>Thao tác</th></tr></thead><tbody id="employeeDocumentTable"><tr><td colspan="7" class="empty-row">Chưa tải dữ liệu.</td></tr></tbody></table></div>
+</section>
+</section>
 <section class="portal-page-section manager-page employee-page-wide" id="page-employees">
 <div class="section-head portal-section-head">
 <div><p class="eyebrow">Hồ sơ nhân sự</p><h2>Danh sách nhân sự</h2><p class="muted">Tìm kiếm, lọc, chỉnh sửa và quản lý tài khoản theo đúng phạm vi phân quyền.</p></div>
@@ -188,6 +240,7 @@
 <label>Loại công việc <select id="employeeTypeFilter"><option value="">Tất cả</option></select></label>
 <label class="hr-only hidden">Ngân hàng <select id="employeeBankFilter"><option value="">Tất cả ngân hàng</option></select></label>
 <label class="hr-only hidden">Dữ liệu ngân hàng <select id="employeeBankDataFilter"><option value="">Tất cả</option><option value="complete">Đủ ngân hàng + số tài khoản</option><option value="missing_account">Thiếu số tài khoản</option><option value="missing_bank">Thiếu tên ngân hàng</option><option value="missing_all">Thiếu toàn bộ</option></select></label>
+<label class="hr-only hidden">Ảnh nhân sự <select id="employeePhotoFilter"><option value="">Tất cả</option><option value="verified">Có hình</option><option value="review">Cần kiểm tra</option><option value="missing">Chưa có hình</option></select></label>
 <label>Chất lượng dữ liệu <select id="employeeQualityFilter"><option value="">Tất cả</option><option value="ok">Đầy đủ</option><option value="needs_review">Cần rà soát</option><option value="invalid">Không hợp lệ</option></select></label>
 <label>Sắp xếp <select id="employeeSortSelect"><option value="organization">Theo tổ chức</option><option value="name_asc">Tên A → Z</option><option value="name_desc">Tên Z → A</option><option value="start_desc">Ngày vào mới nhất</option><option value="code_asc">Mã nhân sự</option></select></label>
 <label>Nhóm hiển thị <select id="employeeGroupSelect"><option selected="" value="department">Theo phòng ban</option><option value="hierarchy_label">Theo cấp quản lý</option><option value="area">Theo khu vực</option><option value="branch">Theo chi nhánh</option><option value="team">Theo Team</option><option value="none">Không nhóm</option></select></label>
@@ -200,10 +253,11 @@
 </label>
 <button class="btn ghost column-customize-btn" id="openEmployeeColumnModalBtn" type="button"><span class="btn-line-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" r="2"></circle><circle cx="15" cy="12" r="2"></circle><circle cx="8" cy="18" r="2"></circle></svg></span><span>Tùy chỉnh cột</span><b id="employeeVisibleColumnCount" class="column-count-badge">0</b></button>
 <label>Số dòng
-                <select id="employeePageSize"><option value="30">30</option><option selected="" value="50">50</option><option value="100">100</option><option value="all">Tất cả</option></select>
+                <select id="employeePageSize"><option value="30">30</option><option value="50">50</option><option value="100">100</option><option selected="" value="all">Tất cả</option></select>
 </label>
-<button class="btn ghost" id="employeeGridFullscreenBtn" type="button">Toàn màn hình</button>
-<button class="btn secondary hr-only hidden" id="exportFilteredEmployeesBtn" type="button">Xuất danh sách đang lọc</button>
+<button class="btn ghost" id="employeeGridFullscreenBtn" type="button">Mở rộng</button>
+<button class="btn ghost hr-only hidden" id="printFilteredEmployeesBtn" type="button">In</button>
+<button class="btn secondary hr-only hidden" id="exportFilteredEmployeesBtn" type="button">Xuất Excel</button>
 </div>
 </div>
 <div aria-live="polite" class="bulk-employee-action-bar hidden" id="bulkEmployeeActionBar">
@@ -214,7 +268,7 @@
 <button class="btn primary" id="openBulkEmployeeEditBtn" type="button">Sửa hàng loạt</button>
 </div>
 </div>
-<div class="panel table-wrap portal-table-wrap employee-data-grid" id="employeeGridPanel">
+<div class="panel table-wrap portal-table-wrap employee-data-grid" id="employeeGridPanel" title="Giữ chuột và kéo ngang để xem các cột phía sau">
 <table id="employeeDataTable"><thead id="employeeTableHead"></thead><tbody id="employeeTable"></tbody></table>
 </div>
 <div class="portal-pagination" id="employeePagination"></div>
@@ -450,6 +504,17 @@
 <p aria-live="polite" class="message" id="employeeColumnMessage"></p>
 </div>
 </div>
+<div class="uws-modal hidden" id="documentLinkModal">
+<div class="uws-modal-backdrop" data-close-document-link=""></div>
+<div class="uws-modal-card portal-form-modal document-link-modal-card">
+<div class="modal-head"><div><p class="eyebrow">Xác minh tài liệu</p><h2>Liên kết với nhân sự</h2><p class="muted" id="documentLinkFileName">Chọn đúng hồ sơ nhân sự cho file này.</p></div><button class="modal-close" data-close-document-link="">×</button></div>
+<label>Nhân sự<select id="documentEmployeeSelect"><option value="">Chọn nhân sự...</option></select></label>
+<label>Loại tài liệu<select id="documentLinkType"><option value="portrait">Ảnh chân dung</option><option value="citizen_id_front">CCCD mặt trước</option><option value="citizen_id_back">CCCD mặt sau</option><option value="citizen_id_combined">CCCD gộp</option><option value="employee_dossier">Hồ sơ DOCX/Google Docs</option><option value="docx_image">Ảnh trích từ DOCX</option><option value="contract">Hợp đồng</option><option value="certificate">Chứng chỉ</option><option value="other">Khác</option></select></label>
+<label class="inline-check"><input id="documentSetPrimaryPortrait" type="checkbox"/> Đặt làm ảnh đại diện chính nếu đây là ảnh chân dung</label>
+<div class="actions"><button class="btn primary" id="saveDocumentLinkBtn" type="button">Xác nhận liên kết</button><button class="btn ghost" data-close-document-link="" type="button">Hủy</button></div>
+<p class="message" id="documentLinkMessage"></p>
+</div>
+</div>
 <div class="uws-modal hidden" id="orgDetailModal">
 <div class="uws-modal-backdrop" data-close-org-detail=""></div>
 <div class="uws-modal-card org-detail-modal-card">
@@ -494,8 +559,8 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="./js/config.js?v=35"></script>
-<script src="./js/import-mapper.js?v=35"></script>
-<script src="./js/portal.js?v=37"></script>
+<script src="./js/config.js?v=40"></script>
+<script src="./js/import-mapper.js?v=40"></script>
+<script src="./js/portal.js?v=43"></script>
 </body>
 </html>

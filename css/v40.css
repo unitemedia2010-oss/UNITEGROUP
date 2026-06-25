@@ -1,0 +1,276 @@
+/* Unite HR Portal V40 - Drive link column and fluid employee grid */
+
+.employee-data-grid {
+  overscroll-behavior-x: contain !important;
+  overscroll-behavior-y: auto !important;
+  cursor: grab;
+}
+.employee-data-grid.is-dragging-table {
+  cursor: grabbing;
+  user-select: none;
+}
+.employee-data-grid.is-dragging-table * {
+  cursor: grabbing !important;
+}
+.employee-data-grid th[data-field="select"],
+.employee-data-grid td[data-field="select"] {
+  position: sticky;
+  left: 0;
+  z-index: 16;
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+  text-align: center;
+  background: #fff;
+  box-shadow: 1px 0 0 #e1e4e9;
+}
+.employee-data-grid thead th[data-field="select"] {
+  z-index: 46;
+  background: #f8f9fb;
+}
+.employee-data-grid table[data-has-select-column="true"] td[data-field="employee_code"],
+.employee-data-grid table[data-has-select-column="true"] th[data-field="employee_code"] {
+  left: 46px;
+}
+.employee-data-grid table[data-has-select-column="true"] td[data-field="full_name"],
+.employee-data-grid table[data-has-select-column="true"] th[data-field="full_name"] {
+  left: 158px;
+}
+.employee-data-grid table[data-has-select-column="true"] thead th[data-field="employee_code"] {
+  z-index: 45;
+}
+.employee-data-grid table[data-has-select-column="true"] thead th[data-field="full_name"] {
+  z-index: 44;
+}
+.employee-data-grid tbody tr:hover td[data-field="select"] {
+  background: #fff4f6;
+}
+.employee-data-grid thead tr:nth-child(2) th[data-field="select"] {
+  z-index: 56 !important;
+}
+.employee-data-grid table[data-has-select-column="true"] thead tr:nth-child(2) th[data-field="employee_code"] {
+  z-index: 55 !important;
+}
+.employee-data-grid table[data-has-select-column="true"] thead tr:nth-child(2) th[data-field="full_name"] {
+  z-index: 54 !important;
+}
+.employee-data-grid table[data-has-select-column="true"] th[data-field="select"],
+.employee-data-grid table[data-has-select-column="true"] td[data-field="select"] {
+  left: 0 !important;
+  width: 46px !important;
+  min-width: 46px !important;
+  max-width: 46px !important;
+}
+.employee-data-grid table[data-has-select-column="true"] th[data-field="employee_code"],
+.employee-data-grid table[data-has-select-column="true"] td[data-field="employee_code"] {
+  left: 46px !important;
+}
+.employee-data-grid table[data-has-select-column="true"] th[data-field="full_name"],
+.employee-data-grid table[data-has-select-column="true"] td[data-field="full_name"] {
+  left: 158px !important;
+}
+.employee-data-grid .employee-super-head th {
+  z-index: 30;
+}
+.employee-data-grid .employee-super-head th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 58 !important;
+  background: #fbf2f4;
+}
+.employee-data-grid td[data-field="document_links"] {
+  min-width: 170px;
+  max-width: 230px;
+}
+.employee-drive-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.employee-drive-link {
+  position: relative;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid #dfe5ec;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.employee-drive-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(116,31,43,.35);
+  background: #fff5f7;
+  color: #741f2b;
+}
+.employee-drive-link.needs-review {
+  padding-right: 19px;
+  border-color: #ead28d;
+  background: #fff9e8;
+  color: #785b0d;
+}
+.employee-drive-link.needs-review i {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #e1a800;
+  box-shadow: 0 0 0 2px #fff9e8;
+}
+.document-setting-options {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 820px) {
+  .employee-data-grid { cursor: default; }
+  .employee-data-grid td[data-field="document_links"] {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+  .employee-drive-link {
+    min-height: 34px;
+    font-size: 11px;
+  }
+}
+
+/* V41 - steadier employee filters, print action, and sticky identity columns */
+.employee-filterbar {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+  align-items: end;
+  gap: 10px !important;
+  padding: 12px !important;
+  border-color: #e3e7ee !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .04) !important;
+}
+.employee-filterbar label,
+.employee-grid-actions label {
+  display: grid;
+  gap: 5px;
+  color: #3f4652;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .02em;
+}
+.employee-filterbar select,
+.employee-filterbar input,
+.employee-grid-actions select {
+  min-height: 38px !important;
+  border-radius: 10px !important;
+  border-color: #d7dee8 !important;
+  background: #fff !important;
+  color: #151922 !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+.employee-grid-toolbar {
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 12px !important;
+  border-color: #e3e7ee !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .04) !important;
+}
+.employee-grid-toolbar .employee-table-summary {
+  gap: 2px !important;
+}
+.employee-grid-toolbar .employee-table-summary b {
+  color: #741f2b;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+.employee-grid-toolbar .employee-table-summary span {
+  color: #667085;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.employee-grid-actions {
+  gap: 8px !important;
+  align-items: end !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+}
+.employee-grid-actions .btn,
+.employee-grid-actions select {
+  min-height: 38px !important;
+}
+.employee-grid-actions .btn {
+  border-radius: 10px !important;
+  padding: 8px 11px !important;
+  white-space: nowrap;
+}
+.employee-grid-actions .btn.ghost {
+  background: #fff !important;
+  border-color: #dfe4ec !important;
+}
+.employee-grid-actions .btn.secondary {
+  background: #f7f2ef !important;
+}
+.employee-grid-actions label {
+  min-width: 112px !important;
+}
+.employee-grid-actions #employeePageSize {
+  min-width: 98px;
+}
+.employee-grid-actions #employeeColumnView {
+  min-width: 156px;
+}
+.employee-grid-actions #employeeGridFullscreenBtn {
+  min-width: 88px;
+}
+.employee-grid-actions #printFilteredEmployeesBtn {
+  min-width: 56px;
+}
+.employee-grid-actions #exportFilteredEmployeesBtn {
+  min-width: 104px;
+}
+.column-customize-btn {
+  gap: 8px;
+}
+.column-count-badge {
+  min-width: 26px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f8e9ee;
+  color: #741f2b;
+  font-size: 10px;
+  line-height: 1;
+}
+.employee-data-grid {
+  border-radius: 14px !important;
+  border-color: #e2e7ef !important;
+  background: #fff !important;
+}
+.employee-data-grid th[data-field="select"],
+.employee-data-grid th[data-field="employee_code"],
+.employee-data-grid th[data-field="full_name"] {
+  background: #f8f9fb !important;
+}
+.employee-data-grid td[data-field="select"],
+.employee-data-grid td[data-field="employee_code"],
+.employee-data-grid td[data-field="full_name"] {
+  background: #fff !important;
+}
+.employee-data-grid tbody tr:hover td[data-field="select"],
+.employee-data-grid tbody tr:hover td[data-field="employee_code"],
+.employee-data-grid tbody tr:hover td[data-field="full_name"] {
+  background: #fff4f6 !important;
+}

@@ -3650,6 +3650,7 @@ html.embedded-mode .portal-return-btn,html.embedded-mode .portal-nav-link { disp
   .org-detail-summary { grid-template-columns:1fr; }
   .employee-detail-actions { margin-left:-14px; margin-right:-14px; padding-left:14px; padding-right:14px; }
   .employee-detail-actions .btn { flex:1 1 150px; }
+  .portal-topbar-actions #portalRefreshBtn { display:none; }
 }
 
 /* =========================================

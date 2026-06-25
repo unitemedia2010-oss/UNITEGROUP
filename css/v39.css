@@ -1,0 +1,127 @@
+/* Unite HR Portal V39 - Media PC Python worker */
+.document-worker-panel {
+  border-color: rgba(54, 105, 174, .2);
+  background:
+    radial-gradient(circle at 92% 0, rgba(54,105,174,.11), transparent 21rem),
+    #fff;
+}
+.document-worker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e6ebf1;
+}
+.document-worker-head h2 { margin-bottom: 5px; }
+.worker-status-badge {
+  min-width: 150px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #dfe5ec;
+  background: #f6f8fa;
+  color: #687484;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.worker-status-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 13%, transparent);
+}
+.worker-status-badge.online,
+.worker-status-badge.idle { color: #277a50; border-color: #cfe6d8; background: #eff9f3; }
+.worker-status-badge.processing { color: #246b9d; border-color: #cce2f1; background: #eef7fd; }
+.worker-status-badge.error { color: #bd3945; border-color: #efcbd0; background: #fff2f3; }
+.worker-status-badge.offline { color: #7b8491; border-color: #dfe4ea; background: #f5f7f9; }
+.document-worker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.document-worker-grid article {
+  min-height: 112px;
+  padding: 15px;
+  border: 1px solid #e2e7ed;
+  border-radius: 16px;
+  background: #fbfcfd;
+}
+.document-worker-grid span,
+.document-worker-grid b,
+.document-worker-grid small { display: block; }
+.document-worker-grid span {
+  color: #7c8795;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.document-worker-grid b {
+  margin-top: 8px;
+  color: #18202b;
+  font-size: 17px;
+  line-height: 1.25;
+}
+.document-worker-grid small {
+  margin-top: 7px;
+  color: #7a8592;
+  font-size: 10px;
+}
+.document-job-progress {
+  height: 9px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ebf0;
+}
+.document-job-progress i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #741f2b, #d1a82a);
+  transition: width .3s ease;
+}
+.document-worker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 15px;
+  padding: 13px 14px;
+  border: 1px solid #e6e9ee;
+  border-radius: 14px;
+  background: #fff;
+}
+.document-worker-footer p {
+  margin: 0;
+  color: #596575;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.document-folder-grid { grid-template-columns: repeat(4, minmax(180px, 1fr)); }
+
+@media (max-width: 980px) {
+  .document-worker-grid { grid-template-columns: 1fr 1fr; }
+  .document-job-progress-card { grid-column: 1 / -1; }
+  .document-folder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .document-worker-head,
+  .document-worker-footer { align-items: stretch; flex-direction: column; }
+  .worker-status-badge { width: 100%; }
+  .document-worker-grid { grid-template-columns: 1fr; }
+  .document-job-progress-card { grid-column: auto; }
+  .document-folder-grid { grid-template-columns: 1fr; }
+}
